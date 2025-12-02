@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2084 - La Resistencia de las Palabras</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ========== PANTALLA DE INICIO ========== -->
+    <div id="start-screen">
+        <div class="start-content">
+            <h1 class="glitch" data-text="2084">2084</h1>
+            <p class="subtitle">La Resistencia de las Palabras</p>
+            <div class="menu-buttons">
+                <button class="menu-btn" onclick="startGame()">
+                    <span class="btn-icon">▶</span>
+                    Nuevo Juego
+                </button>
+                <button class="menu-btn" onclick="loadGameFromMenu()">
+                    <span class="btn-icon">📂</span>
+                    Cargar Partida
+                </button>
+                <button class="menu-btn" onclick="showCredits()">
+                    <span class="btn-icon">ℹ</span>
+                    Créditos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== JUEGO PRINCIPAL ========== -->
+    <div id="game-container" style="display: none;">
+        <!-- HEADER -->
+        <header id="game-header">
+            <div class="header-left">
+                <h1 class="game-title">2084</h1>
+                <span class="game-subtitle">La Resistencia de las Palabras</span>
+            </div>
+            <div class="header-stats">
+                <div class="stat-box">
+                    <span class="stat-label">🧠 Libertad Mental</span>
+                    <div class="stat-bar">
+                        <div id="mental-freedom-fill" class="stat-fill"></div>
+                    </div>
+                    <span id="mental-freedom-value" class="stat-value">50</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">📖 Palabras</span>
+                    <span id="words-count" class="stat-value">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ÁREA DE JUEGO -->
+        <div id="game-area">
+            <!-- CANVAS PRINCIPAL -->
+            <div class="canvas-container">
+                <canvas id="game-canvas"></canvas>
+                <div class="vignette"></div>
+            </div>
+            <!-- PANEL LATERAL -->
+            <aside id="side-panel">
+                <!-- MINIMAPA -->
+                <section class="panel-section">
+                    <h3 class="panel-title">
+                        <span class="title-icon">🗺️</span>
+                        Mapa
+                    </h3>
+                    <div class="minimap-container">
+                        <canvas id="minimap" width="150" height="105"></canvas>
+                        <div class="minimap-border"></div>
+                    </div>
+                </section>
+
+                <!-- MISIÓN ACTUAL -->
+                <section class="panel-section">
+                    <h3 class="panel-title">
+                        <span class="title-icon">🎯</span>
+                        Misión Actual
+                    </h3>
+                    <div class="current-mission">
+                        <div id="current-mission-name" class="mission-name">
+                            Explora y habla con NPCs
+                        </div>
+                        <button id="show-missions-btn" class="panel-btn">
+                            Ver Todas las Misiones
+                        </button>
+                    </div>
+                </section>
+
+                <!-- PALABRAS DESBLOQUEADAS -->
+                <section class="panel-section">
+                    <h3 class="panel-title">
+                          <span class="title-icon">📚</span>
+                        Palabras Desbloqueadas
+                    </h3>
+                    <ul id="words-list" class="word-list">
+                        <li class="empty-state">No has desbloqueado palabras</li>
+                    </ul>
+                </section>
+
+                <!-- CONTROLES -->
+                <section class="panel-section controls-section">
+                    <h3 class="panel-title">
+                        <span class="title-icon">🎮</span>
+                        Controles
+                    </h3>
+                    <div class="controls-grid">
+                        <div class="control-item">
+                            <kbd>WASD</kbd>
+                            <span>Mover</span>
+                        </div>
+                        <div class="control-item">
+                            <kbd>ESPACIO</kbd>
+                            <span>Interactuar</span>
+                        </div>
+                        <div class="control-item">
+                            <kbd>M</kbd>
+                            <span>Misiones</span>
+                        </div>
+                        <div class="control-item">
+                            <kbd>ESC</kbd>
+                            <span>Pausa</span>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </div>
+
+    <!-- ========== OVERLAY DE DIÁLOGO ========== -->
+    <div id="dialogue-overlay" class="overlay">
+        <div class="dialogue-box">
+            <div class="dialogue-header">
+                <div id="npc-portrait" class="npc-portrait"></div>
+                <div class="npc-info">
+                    <h3 id="npc-name" class="npc-name">NPC</h3>
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <button id="close-dialogue-btn" class="close-dialogue-btn">×</button>
+            </div>
+            <div class="dialogue-content">
+                <p id="dialogue-text" class="dialogue-text"></p>
+            </div>
+            <div id="dialogue-choices" class="dialogue-choices"></div>
+        </div>
+    </div>
+
+    <!-- ========== OVERLAY DE OFERTA DE MISIÓN ========== -->
+    <div id="mission-overlay" class="overlay">
+        <div class="mission-box">
+            <div class="mission-header">
+                <h3 id="mission-title" class="mission-title">Misión</h3>
+                <div class="mission-badge">!</div>
+            </div>
+            <div class="mission-content">
+                <p id="mission-description" class="mission-description"></p>
+                <div class="mission-objectives">
+                    <h4>📋 Objetivos</h4>
+                    <ul id="mission-objectives-list"></ul>
+                </div>
+                <div class="mission-rewards">
+                    <h4>🎁 Recompensas</h4>
+                    <div id="mission-rewards-text"></div>
+                </div>
+            </div>
+            <div class="mission-actions">
+                <button id="accept-mission-btn" class="mission-btn accept">
+                    ✓ Aceptar Misión
+                </button>
+                <button id="decline-mission-btn" class="mission-btn decline">
+                    ✗ Rechazar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== OVERLAY DE PANEL DE MISIONES ========== -->
+    <div id="missions-overlay" class="overlay">
+        <div class="missions-container">
+            <div class="missions-header">
+                <h2>📋 Registro de Misiones</h2>
+                <button id="close-missions-btn" class="close-btn">×</button>
+            </div>
+            <div class="missions-content">
+                <div class="missions-column">
+                    <h3 class="missions-subtitle">⚡ Misiones Activas</h3>
+                    <ul id="active-missions-list" class="missions-list">
+                        <li class="empty-state">No tienes misiones activas</li>
+                    </ul>
+                </div>
+                <div class="missions-column">
+                    <h3 class="missions-subtitle">✅ Misiones Completadas</h3>
+                    <ul id="completed-missions-list" class="missions-list">
+                        <li class="empty-state">No has completado misiones</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== OVERLAY DE PAUSA ========== -->
+    <div id="pause-overlay" class="overlay">
+        <div class="pause-container">
+            <h2 class="pause-title">⏸ PAUSA</h2>
+            <div class="pause-menu-buttons">
+                <button id="resume-btn" class="pause-btn">
+                    ▶ Reanudar
+                </button>
+                <button id="save-btn" class="pause-btn">
+                    💾 Guardar Partida
+                </button>
+                <button id="load-btn" class="pause-btn">
+                    📂 Cargar Partida
+                </button>
+                <button id="restart-btn" class="pause-btn">
+                    🔄 Reiniciar Juego
+                </button>
+                <button id="exit-btn" class="pause-btn danger">
+                    🚪 Salir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== CONTENEDOR DE NOTIFICACIONES ========== -->
+    <div id="notification-container"></div>
+
+    <!-- ========== SCRIPTS ========== -->
+    <script>
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+        }
+
+        function loadGameFromMenu() {
+            const saveData = localStorage.getItem('2084_save');
+            if (saveData) {
+                startGame();
+                // El loadGame() del game.js se encargará del resto
+                setTimeout(() => {
+                    if (typeof loadGame === 'function') {
+                        loadGame();
+                    }
+                }, 100);
+            } else {
+                alert('❌ No hay partida guardada');
+            }
+        }
+
+        function showCredits() {
+            alert('🎮 2084 - La Resistencia de las Palabras\n\n' +
+                  'Inspirado en "1984" de George Orwell\n\n' +
+                  'Desarrollado con HTML5, CSS3 y JavaScript\n\n' +
+                  '© 2024');
+        }
+    </script>
+    <script src="game.js"></script>
+</body>
+</html>
