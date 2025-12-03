@@ -1,49 +1,22 @@
-// ========================================
-// 🎮 JUEGO 2084 - VERSIÓN 2D RPG MEJORADA
-// ========================================
+// ===========================
+// CONFIGURACIÓN DEL CANVAS
+// ===========================
 
-// ========== CONFIGURACIÓN GLOBAL ==========
-const CONFIG = {
-    canvasWidth: 1000,
-    canvasHeight: 700,
-    playerSpeed: 3,
-    enemySpeed: 1.5,
-    interactionDistance: 60,
-    mentalFreedomMax: 100,
-    mentalFreedomMin: 0
-};
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 800;
+canvas.height = 600;
 
-// ========== ESTADO DEL JUEGO ==========
-const gameState = {
-    currentMap: 'school',
-    mentalFreedom: 50,
-    unlockedWords: [],
-    missions: [],
-    completedMissions: [],
-    dialogueActive: false,
-    paused: false,
-    flags: {
-        metLibrarian: false,
-        metJulia: false,
-        metOBrien: false,
-        joinedResistance: false,
-        hackedSystem: false,
-        foundBook: false
-    }
-};
+const minimap = document.getElementById('minimap');
+const minimapCtx = minimap.getContext('2d');
 
-// ========== JUGADOR ==========
-const player = {
-    x: 500,
-    y: 350,
-    width: 30,
-    height: 30,
-    speed: CONFIG.playerSpeed,
-    color: '#00d4ff',
-    direction: 'down'
-};
+// ===========================
+// VARIABLES GLOBALES
+// ===========================
 
-// ========== CONTROLES ==========
+let gameRunning = false;
+let isPaused = false;
+
 const keys = {
     up: false,
     down: false,
@@ -54,33 +27,184 @@ const keys = {
     pause: false
 };
 
-// Prevenir scroll con flechas
-window.addEventListener('keydown', (e) => {
-    if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
-        e.preventDefault();
-    }
-    keys[e.code] = true;
-    
-    // Interacción con ESPACIO o E
-    if ((e.code === 'Space' || e.code === 'KeyE') && !gameState.dialogueActive && !gameState.paused) {
-        console.log('Tecla de interacción presionada'); // Debug
-        checkInteractions();
-    }
-    
-    // Pausa con ESC
-    if (e.code === 'Escape') {
-        togglePause();
-    }
-    
-    // Abrir panel de misiones con M
-    if (e.code === 'KeyM' && !gameState.dialogueActive && !gameState.paused) {
-        showMissionsPanel();
-    }
-});
+// ===========================
+// JUGADOR
+// ===========================
 
-window.addEventListener('keyup', (e) => {
-    keys[e.code] = false;
-});
+const player = {
+    x: 400,
+    y: 300,
+    width: 30,
+    height: 30,
+    speed: 3,
+    color: '#00ffcc',
+    mentalFreedom: 50,
+    unlockedWords: []
+};
+
+// ===========================
+// ZONAS DEL MAPA
+// ===========================
+
+const zones = [
+    { name: 'Salón de Clases', x: 50, y: 50, width: 200, height: 150, color: '#1a4d7a', interactive: true },
+    { name: 'Sala de Computadoras', x: 300, y: 50, width: 200, height: 150, color: '#4a1a7a', interactive: true },
+    { name: 'Patio', x: 550, y: 50, width: 200, height: 150, color: '#1a7a4d', interactive: true },
+    { name: 'Baño (Resistencia)', x: 50, y: 250, width: 200, height: 150, color: '#7a4d1a', interactive: true },
+    { name: 'Biblioteca Antigua', x: 300, y: 250, width: 200, height: 150, color: '#7a1a4d', interactive: true },
+    { name: 'Sala de Control SVE', x: 550, y: 250, width: 200, height: 300, color: '#7a1a1a', interactive: true },
+    { name: 'Exterior del Colegio', x: 50, y: 450, width: 450, height: 100, color: '#2a4a2a', interactive: true }
+];
+
+// ===========================
+// NPCs
+// ===========================
+
+const npcs = [
+    { 
+        name: 'Julia', 
+        x: 150, 
+        y: 120, 
+        width: 25, 
+        height: 25, 
+        color: '#ff6b9d',
+        dialogue: 'Winston... he encontrado algo. Palabras prohibidas escondidas en la biblioteca antigua.',
+        hasMission: true,
+        missionId: 'mission1'
+    },
+    { 
+        name: 'O\'Brien', 
+        x: 400, 
+        y: 120, 
+        width: 25, 
+        height: 25, 
+        color: '#ff4757',
+        dialogue: 'El Sistema SVE lo ve todo. Pero hay formas de engañarlo... si sabes cómo.',
+        hasMission: true,
+        missionId: 'mission2'
+    },
+    { 
+        name: 'Miembro de la Resistencia', 
+        x: 150, 
+        y: 320, 
+        width: 25, 
+        height: 25, 
+        color: '#2ed573',
+        dialogue: 'Nos reunimos aquí en secreto. Las palabras son nuestra arma contra el control.',
+        hasMission: false
+    }
+];
+
+// ===========================
+// SISTEMA DE MISIONES
+// ===========================
+
+const missions = {
+    mission1: {
+        id: 'mission1',
+        title: 'Palabras Prohibidas',
+        description: 'Julia te ha pedido que encuentres las palabras prohibidas escondidas en la Biblioteca Antigua.',
+        objectives: [
+            'Ve a la Biblioteca Antigua',
+            'Busca las palabras escondidas',
+            'Regresa con Julia'
+        ],
+        rewards: '+20 Libertad Mental, Palabra: "LIBERTAD"',
+        active: false,
+        completed: false,
+        progress: 0
+    },
+    mission2: {
+        id: 'mission2',
+        title: 'Infiltración al SVE',
+        description: 'O\'Brien necesita que accedas a la Sala de Control SVE para obtener información crítica.',
+        objectives: [
+            'Llega a la Sala de Control SVE',
+            'Hackea el sistema',
+            'Escapa sin ser detectado'
+        ],
+        rewards: '+30 Libertad Mental, Palabra: "VERDAD"',
+        active: false,
+        completed: false,
+        progress: 0
+    }
+};
+
+let activeMissions = [];
+let completedMissions = [];
+
+// ===========================
+// ENEMIGOS/DRONES
+// ===========================
+
+const drones = [
+    { x: 650, y: 350, width: 20, height: 20, speed: 1, direction: 1, patrolStart: 550, patrolEnd: 750, axis: 'x' }
+];
+
+// ===========================
+// INICIALIZACIÓN
+// ===========================
+
+function initGame() {
+    console.log('🎮 Iniciando juego 2084...');
+    gameRunning = true;
+    setupControls();
+    setupTouchControls();
+    setupUI();
+    gameLoop();
+}
+
+// ===========================
+// CONTROLES DE TECLADO
+// ===========================
+
+function setupControls() {
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') {
+            keys.up = true;
+            e.preventDefault();
+        }
+        if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') {
+            keys.down = true;
+            e.preventDefault();
+        }
+        if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
+            keys.left = true;
+            e.preventDefault();
+        }
+        if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
+            keys.right = true;
+            e.preventDefault();
+        }
+        if (e.key === ' ' || e.key === 'e' || e.key === 'E') {
+            keys.interact = true;
+            e.preventDefault();
+        }
+        if (e.key === 'm' || e.key === 'M') {
+            toggleMissionsOverlay();
+            e.preventDefault();
+        }
+        if (e.key === 'Escape') {
+            togglePause();
+            e.preventDefault();
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = false;
+        if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = false;
+        if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = false;
+        if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
+        if (e.key === ' ' || e.key === 'e' || e.key === 'E') keys.interact = false;
+    });
+
+    console.log('⌨️ Controles de teclado configurados');
+}
+
+// ===========================
+// CONTROLES TÁCTILES
+// ===========================
+
 function setupTouchControls() {
     const btnUp = document.getElementById('btn-up');
     const btnDown = document.getElementById('btn-down');
@@ -91,26 +215,27 @@ function setupTouchControls() {
     const btnPause = document.getElementById('btn-pause');
 
     if (!btnUp) {
-        console.warn('Controles táctiles no encontrados');
+        console.warn('⚠️ Controles táctiles no encontrados en el DOM');
         return;
     }
 
-    console.log('✅ Controles táctiles configurados');
+    console.log('📱 Configurando controles táctiles...');
 
-    // Función helper para botones direccionales (mantener presionado)
+    // Función para vincular botones direccionales
     function bindDirectionalButton(button, keyName) {
+        // Touch events
         button.addEventListener('touchstart', (e) => {
             e.preventDefault();
             e.stopPropagation();
             keys[keyName] = true;
-            console.log(`🎮 Tocado: ${keyName} = true`);
+            console.log(`🎮 Touch: ${keyName} = true`);
         }, { passive: false });
 
         button.addEventListener('touchend', (e) => {
             e.preventDefault();
             e.stopPropagation();
             keys[keyName] = false;
-            console.log(`🎮 Soltado: ${keyName} = false`);
+            console.log(`🎮 Touch: ${keyName} = false`);
         }, { passive: false });
 
         button.addEventListener('touchcancel', (e) => {
@@ -119,14 +244,20 @@ function setupTouchControls() {
             keys[keyName] = false;
         }, { passive: false });
 
-        // También soporte para mouse (para probar en escritorio)
+        // Mouse events (para probar en PC)
         button.addEventListener('mousedown', (e) => {
             e.preventDefault();
             keys[keyName] = true;
+            console.log(`🖱️ Mouse: ${keyName} = true`);
         });
 
         button.addEventListener('mouseup', (e) => {
             e.preventDefault();
+            keys[keyName] = false;
+            console.log(`🖱️ Mouse: ${keyName} = false`);
+        });
+
+        button.addEventListener('mouseleave', (e) => {
             keys[keyName] = false;
         });
     }
@@ -137,765 +268,300 @@ function setupTouchControls() {
     bindDirectionalButton(btnLeft, 'left');
     bindDirectionalButton(btnRight, 'right');
 
-    // Botón de INTERACTUAR (⚡)
+    // Botón INTERACTUAR
     btnInteract.addEventListener('touchstart', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('⚡ Botón interactuar presionado');
-        
-        // Simular presión de ESPACIO
+        console.log('⚡ Botón interactuar presionado (touch)');
         keys.interact = true;
-        
-        // Disparar evento de teclado para compatibilidad
-        const spaceEvent = new KeyboardEvent('keydown', {
-            key: ' ',
-            code: 'Space',
-            keyCode: 32,
-            which: 32,
-            bubbles: true
-        });
-        window.dispatchEvent(spaceEvent);
-        
-        setTimeout(() => {
-            keys.interact = false;
-            const spaceUpEvent = new KeyboardEvent('keyup', {
-                key: ' ',
-                code: 'Space',
-                keyCode: 32,
-                which: 32,
-                bubbles: true
-            });
-            window.dispatchEvent(spaceUpEvent);
-        }, 200);
+        checkInteractions();
+        setTimeout(() => { keys.interact = false; }, 200);
     }, { passive: false });
 
-    // Botón de MISIONES (📋)
+    btnInteract.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('⚡ Botón interactuar presionado (click)');
+        keys.interact = true;
+        checkInteractions();
+        setTimeout(() => { keys.interact = false; }, 200);
+    });
+
+    // Botón MISIONES
     btnMissions.addEventListener('touchstart', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('📋 Botón misiones presionado');
-        
-        // Simular presión de M
-        const mEvent = new KeyboardEvent('keydown', {
-            key: 'm',
-            code: 'KeyM',
-            keyCode: 77,
-            which: 77,
-            bubbles: true
-        });
-        window.dispatchEvent(mEvent);
-        
-        setTimeout(() => {
-            const mUpEvent = new KeyboardEvent('keyup', {
-                key: 'm',
-                code: 'KeyM',
-                keyCode: 77,
-                which: 77,
-                bubbles: true
-            });
-            window.dispatchEvent(mUpEvent);
-        }, 200);
+        console.log('📋 Botón misiones presionado (touch)');
+        toggleMissionsOverlay();
     }, { passive: false });
 
-    // Botón de PAUSA (⏸) - este ya funciona, pero lo dejamos igual
+    btnMissions.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('📋 Botón misiones presionado (click)');
+        toggleMissionsOverlay();
+    });
+
+    // Botón PAUSA
     btnPause.addEventListener('touchstart', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('⏸ Botón pausa presionado');
-        
-        // Simular presión de ESC
-        const escEvent = new KeyboardEvent('keydown', {
-            key: 'Escape',
-            code: 'Escape',
-            keyCode: 27,
-            which: 27,
-            bubbles: true
-        });
-        window.dispatchEvent(escEvent);
-        
-        setTimeout(() => {
-            const escUpEvent = new KeyboardEvent('keyup', {
-                key: 'Escape',
-                code: 'Escape',
-                keyCode: 27,
-                which: 27,
-                bubbles: true
-            });
-            window.dispatchEvent(escUpEvent);
-        }, 200);
+        console.log('⏸ Botón pausa presionado (touch)');
+        togglePause();
     }, { passive: false });
+
+    btnPause.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('⏸ Botón pausa presionado (click)');
+        togglePause();
+    });
+
+    console.log('✅ Controles táctiles configurados correctamente');
 }
-// ========== MAPAS ==========
-const maps = {
-    school: {
-        name: 'Escuela Rural 2084',
-        width: 1000,
-        height: 700,
-        background: '#2c3e50',
-        zones: [
-            // Paredes exteriores
-            { x: 0, y: 0, width: 1000, height: 20, type: 'wall', color: '#34495e' },
-            { x: 0, y: 0, width: 20, height: 700, type: 'wall', color: '#34495e' },
-            { x: 980, y: 0, width: 20, height: 700, type: 'wall', color: '#34495e' },
-            { x: 0, y: 680, width: 1000, height: 20, type: 'wall', color: '#34495e' },
-            
-            // Biblioteca (arriba izquierda) - INTERACTIVA
-            { x: 50, y: 50, width: 200, height: 150, type: 'library', color: '#27ae60', label: '📚 BIBLIOTECA', interactive: true },
-            
-            // Baño de resistencia (arriba derecha) - INTERACTIVA
-            { x: 750, y: 50, width: 200, height: 150, type: 'bathroom', color: '#3498db', label: '🚪 BAÑO', interactive: true },
-            
-            // Sala de computadores (abajo centro) - INTERACTIVA
-            { x: 350, y: 500, width: 300, height: 150, type: 'computer_room', color: '#e74c3c', label: '💻 SALA PC', interactive: true },
-            
-            // Patio central - AHORA INTERACTIVA
-            { x: 300, y: 250, width: 400, height: 200, type: 'courtyard', color: '#95a5a6', label: '🏫 PATIO', interactive: true },
-            
-            // Salón de clases (izquierda centro) - AHORA INTERACTIVA
-            { x: 50, y: 300, width: 200, height: 150, type: 'classroom', color: '#e67e22', label: '🎓 SALÓN', interactive: true },
-            
-            // Oficina de O'Brien (derecha centro) - INTERACTIVA
-            { x: 750, y: 300, width: 200, height: 150, type: 'office', color: '#9b59b6', label: '🏢 OFICINA', interactive: true }
-        ],
-        npcs: [
-            {
-                name: 'Julia',
-                x: 850,
-                y: 120,
-                width: 25,
-                height: 25,
-                color: '#e91e63',
-                dialogue: 'julia_intro',
-                image: 'images/julia_student.jpg'
-            },
-            {
-                name: 'O\'Brien',
-                x: 850,
-                y: 370,
-                width: 25,
-                height: 25,
-                color: '#9c27b0',
-                dialogue: 'obrien_intro',
-                image: 'images/obrien_teacher.jpg'
-            },
-            {
-                name: 'Bibliotecaria',
-                x: 150,
-                y: 120,
-                width: 25,
-                height: 25,
-                color: '#4caf50',
-                dialogue: 'librarian_intro',
-                image: 'images/old_library.jpg'
-            }
-        ],
-        enemies: [
-            { x: 400, y: 100, width: 30, height: 30, speed: 1.2, patrolPath: [{x: 400, y: 100}, {x: 600, y: 100}], currentTarget: 0, type: 'drone' },
-            { x: 500, y: 600, width: 30, height: 30, speed: 1, patrolPath: [{x: 300, y: 600}, {x: 700, y: 600}], currentTarget: 0, type: 'drone' }
-        ]
-    }
-};
 
-let currentMap = maps.school;
+// ===========================
+// CONFIGURACIÓN DE UI
+// ===========================
 
-// ========== MISIONES DISPONIBLES ==========
-const availableMissions = {
-    findBook: {
-        id: 'findBook',
-        name: 'El Libro Prohibido',
-        description: 'La bibliotecaria te ha pedido que encuentres un libro antiguo escondido en la biblioteca. Este libro contiene palabras que el SVE ha intentado borrar.',
-        objectives: [
-            'Busca en los estantes de la biblioteca',
-            'Encuentra el libro "1984" de George Orwell',
-            'Regresa con la bibliotecaria'
-        ],
-        rewards: {
-            mentalFreedom: 20,
-            words: ['LIBERTAD', 'PENSAMIENTO', 'REBELDÍA']
-        },
-        giver: 'Bibliotecaria',
-        zone: 'library'
-    },
-    joinResistance: {
-        id: 'joinResistance',
-        name: 'Únete a la Resistencia',
-        description: 'Julia te ha invitado a unirte a un grupo secreto que lucha contra el SVE. Debes demostrar tu compromiso con la causa.',
-        objectives: [
-            'Reúnete con Julia en el baño',
-            'Aprende la señal secreta de la resistencia',
-            'Encuentra a otros 3 miembros'
-        ],
-        rewards: {
-            mentalFreedom: 30,
-            words: ['RESISTENCIA', 'SOLIDARIDAD', 'ESPERANZA']
-        },
-        giver: 'Julia',
-        zone: 'bathroom'
-    },
-    hackSystem: {
-        id: 'hackSystem',
-        name: 'Hackear el SVE',
-        description: 'O\'Brien te ha dado acceso a la sala de computadores. Debes hackear el sistema de vigilancia para debilitar el control del SVE sobre la escuela.',
-        objectives: [
-            'Accede a la sala de computadores',
-            'Encuentra la terminal principal',
-            'Ejecuta el código de hackeo',
-            'Escapa sin ser detectado'
-        ],
-        rewards: {
-            mentalFreedom: 40,
-            words: ['CÓDIGO', 'HACKEO', 'LIBERTAD DIGITAL']
-        },
-        giver: 'O\'Brien',
-        zone: 'computer_room'
-    },
-    learnTruth: {
-        id: 'learnTruth',
-        name: 'La Verdad sobre O\'Brien',
-        description: 'O\'Brien parece saber más de lo que dice. Investiga su verdadera lealtad: ¿está con la resistencia o con el SVE?',
-        objectives: [
-            'Habla con O\'Brien en su oficina',
-            'Observa sus acciones',
-            'Decide si confiar en él'
-        ],
-        rewards: {
-            mentalFreedom: 25,
-            words: ['VERDAD', 'TRAICIÓN', 'CONFIANZA']
-        },
-        giver: 'O\'Brien',
-        zone: 'office'
-    }
-};
+function setupUI() {
+    // Botón de misiones en el panel
+    document.getElementById('show-missions-btn').addEventListener('click', toggleMissionsOverlay);
 
-// ========== DIÁLOGOS ==========
-const dialogues = {
-    julia_intro: {
-        npc: 'Julia',
-        image: 'images/julia_student.jpg',
-        text: 'Hola... ¿Eres nuevo aquí? Ten cuidado, el SVE nos vigila constantemente. Pero hay quienes resistimos. ¿Te gustaría saber más?',
-        choices: [
-            { text: '¿Qué es el SVE?', next: 'julia_sve' },
-            { text: 'Quiero unirme a la resistencia', action: 'offerMission', mission: 'joinResistance' },
-            { text: 'No me interesa', action: 'close' }
-        ]
-    },
-    julia_sve: {
-        npc: 'Julia',
-        image: 'images/julia_student.jpg',
-        text: 'El Sistema de Vigilancia Estudiantil. Controla todo: lo que leemos, lo que pensamos, incluso nuestras palabras. Pero podemos luchar contra él.',
-        choices: [
-            { text: '¿Cómo puedo ayudar?', action: 'offerMission', mission: 'joinResistance' },
-            { text: 'Es demasiado peligroso', action: 'close' }
-        ]
-    },
-    obrien_intro: {
-        npc: 'O\'Brien',
-        image: 'images/obrien_teacher.jpg',
-        text: 'Bienvenido, estudiante. Soy el profesor O\'Brien. He notado que tienes... curiosidad. Eso es peligroso, pero también valioso. ¿Quieres conocer la verdad?',
-        choices: [
-            { text: 'Sí, quiero saber la verdad', next: 'obrien_truth' },
-            { text: '¿Eres parte de la resistencia?', next: 'obrien_resistance' },
-            { text: 'Prefiero no involucrarme', action: 'close' }
-        ]
-    },
-    obrien_truth: {
-        npc: 'O\'Brien',
-        image: 'images/obrien_teacher.jpg',
-        text: 'La verdad es que el SVE no es invencible. Tiene puntos débiles. Yo puedo ayudarte a encontrarlos... pero necesito saber si puedo confiar en ti.',
-        choices: [
-            { text: 'Puedes confiar en mí', action: 'offerMission', mission: 'hackSystem' },
-            { text: 'Necesito pensarlo', action: 'close' }
-        ]
-    },
-    obrien_resistance: {
-        npc: 'O\'Brien',
-        image: 'images/obrien_teacher.jpg',
-        text: 'Esa es una pregunta peligrosa. Digamos que... tengo mis propios métodos. Si quieres ayudar, tengo una tarea para ti.',
-        choices: [
-            { text: '¿Qué necesitas que haga?', action: 'offerMission', mission: 'learnTruth' },
-            { text: 'No estoy seguro de ti', action: 'close' }
-        ]
-    },
-    librarian_intro: {
-        npc: 'Bibliotecaria',
-        image: 'images/old_library.jpg',
-        text: 'Shh... Las paredes tienen oídos. Soy la guardiana de los libros prohibidos. El SVE ha intentado quemar todo el conocimiento, pero yo he salvado algunos. ¿Buscas algo en particular?',
-        choices: [
-            { text: 'Busco libros prohibidos', action: 'offerMission', mission: 'findBook' },
-            { text: '¿Qué libros tienes?', next: 'librarian_books' },
-            { text: 'Solo estoy mirando', action: 'close' }
-        ]
-    },
-    librarian_books: {
-        npc: 'Bibliotecaria',
-        image: 'images/old_library.jpg',
-        text: 'Tengo clásicos: Orwell, Huxley, Bradbury... Todos prohibidos por el SVE. Pero hay uno en particular que podría cambiar todo. ¿Te atreves a buscarlo?',
-        choices: [
-            { text: 'Sí, lo buscaré', action: 'offerMission', mission: 'findBook' },
-            { text: 'Es muy arriesgado', action: 'close' }
-        ]
-    }
-};
+    // Cerrar diálogo
+    document.getElementById('close-dialogue-btn').addEventListener('click', closeDialogue);
 
-// ========== CANVAS Y CONTEXTO ==========
-const canvas = document.getElementById('game-canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = CONFIG.canvasWidth;
-canvas.height = CONFIG.canvasHeight;
+    // Cerrar panel de misiones
+    document.getElementById('close-missions-btn').addEventListener('click', toggleMissionsOverlay);
 
-window.addEventListener('load', () => {
-    if (typeof initGame === 'function') {
-        initGame();
-    }
-    setupTouchControls();
-});
-// Minimapa
-const minimap = document.getElementById('minimap');
-const minimapCtx = minimap.getContext('2d');
+    // Botones de misión
+    document.getElementById('accept-mission-btn').addEventListener('click', acceptMission);
+    document.getElementById('decline-mission-btn').addEventListener('click', declineMission);
 
-// ========== INICIALIZACIÓN ==========
-function init() {
-    console.log('🎮 Juego 2084 iniciado');
+    // Botones de pausa
+    document.getElementById('resume-btn').addEventListener('click', togglePause);
+    document.getElementById('save-btn').addEventListener('click', saveGame);
+    document.getElementById('load-btn').addEventListener('click', loadGame);
+    document.getElementById('restart-btn').addEventListener('click', restartGame);
+    document.getElementById('exit-btn').addEventListener('click', exitToMenu);
+
     updateUI();
-    showNotification('🎮 Bienvenido a 2084. Usa WASD o flechas para moverte. ESPACIO para interactuar.', 7000);
-    gameLoop();
 }
 
-// ========== BUCLE PRINCIPAL ==========
+// ===========================
+// GAME LOOP
+// ===========================
+
 function gameLoop() {
-    if (!gameState.paused && !gameState.dialogueActive) {
-        updatePlayer();
-        updateEnemies();
+    if (!gameRunning) return;
+
+    if (!isPaused) {
+        update();
+        draw();
+        drawMinimap();
     }
-    draw();
-    drawMinimap();
+
     requestAnimationFrame(gameLoop);
 }
 
-// ========== ACTUALIZAR JUGADOR ==========
+// ===========================
+// UPDATE
+// ===========================
+
+function update() {
+    updatePlayer();
+    updateDrones();
+    checkInteractions();
+}
+
 function updatePlayer() {
-    const prevX = player.x;
-    const prevY = player.y;
-    
-    // Movimiento
-    if (keys['KeyW'] || keys['ArrowUp']) {
+    let moving = false;
+
+    if (keys.up) {
         player.y -= player.speed;
-        player.direction = 'up';
+        moving = true;
     }
-    if (keys['KeyS'] || keys['ArrowDown']) {
+    if (keys.down) {
         player.y += player.speed;
-        player.direction = 'down';
+        moving = true;
     }
-    if (keys['KeyA'] || keys['ArrowLeft']) {
+    if (keys.left) {
         player.x -= player.speed;
-        player.direction = 'left';
+        moving = true;
     }
-    if (keys['KeyD'] || keys['ArrowRight']) {
+    if (keys.right) {
         player.x += player.speed;
-        player.direction = 'right';
+        moving = true;
     }
-    
-    // Colisiones con paredes
-    for (let zone of currentMap.zones) {
-        if (zone.type === 'wall' && checkCollision(player, zone)) {
-            player.x = prevX;
-            player.y = prevY;
-            break;
-        }
-    }
-    
-    // Límites del mapa
-    player.x = Math.max(20, Math.min(player.x, currentMap.width - player.width - 20));
-    player.y = Math.max(20, Math.min(player.y, currentMap.height - player.height - 20));
-    
-    // Colisiones con enemigos
-    for (let enemy of currentMap.enemies) {
-        if (checkCollision(player, enemy)) {
-            changeMentalFreedom(-10);
-            showNotification('⚠️ ¡Un dron te ha detectado! Libertad mental -10', 4000);
-            // Empujar al jugador
-            player.x = prevX;
-            player.y = prevY;
-        }
+
+    // Límites del canvas
+    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+    player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+
+    // Debug de movimiento
+    if (moving) {
+        console.log(`🏃 Jugador moviéndose: x=${Math.round(player.x)}, y=${Math.round(player.y)}`);
     }
 }
 
-// ========== ACTUALIZAR ENEMIGOS ==========
-function updateEnemies() {
-    for (let enemy of currentMap.enemies) {
-        if (enemy.patrolPath && enemy.patrolPath.length > 0) {
-            const target = enemy.patrolPath[enemy.currentTarget];
-            const dx = target.x - enemy.x;
-            const dy = target.y - enemy.y;
-            const distance = Math.hypot(dx, dy);
-            
-            if (distance < 5) {
-                enemy.currentTarget = (enemy.currentTarget + 1) % enemy.patrolPath.length;
-            } else {
-                enemy.x += (dx / distance) * enemy.speed;
-                enemy.y += (dy / distance) * enemy.speed;
+function updateDrones() {
+    drones.forEach(drone => {
+        if (drone.axis === 'x') {
+            drone.x += drone.speed * drone.direction;
+            if (drone.x >= drone.patrolEnd || drone.x <= drone.patrolStart) {
+                drone.direction *= -1;
             }
-        }
-    }
-}
-
-// ========== DIBUJAR ==========
-function draw() {
-    // Fondo
-    ctx.fillStyle = currentMap.background;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Zonas
-    for (let zone of currentMap.zones) {
-        ctx.fillStyle = zone.color;
-        ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
-        
-        // Etiquetas
-        if (zone.label) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(zone.x, zone.y, zone.width, 25);
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(zone.label, zone.x + zone.width / 2, zone.y + 17);
-        }
-    }
-    
-    // NPCs
-    for (let npc of currentMap.npcs) {
-        ctx.fillStyle = npc.color;
-        ctx.fillRect(npc.x, npc.y, npc.width, npc.height);
-        
-        // Nombre del NPC
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(npc.name, npc.x + npc.width / 2, npc.y - 5);
-    }
-    
-    // Enemigos (drones)
-    for (let enemy of currentMap.enemies) {
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-        
-        // Ojo del dron
-        ctx.fillStyle = '#ffff00';
-        ctx.beginPath();
-        ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Rango de detección
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 80, 0, Math.PI * 2);
-        ctx.stroke();
-    }
-    
-    // Jugador
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-    
-    // Dirección del jugador
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    if (player.direction === 'up') {
-        ctx.moveTo(player.x + player.width / 2, player.y);
-        ctx.lineTo(player.x + player.width / 2 - 5, player.y + 10);
-        ctx.lineTo(player.x + player.width / 2 + 5, player.y + 10);
-    } else if (player.direction === 'down') {
-        ctx.moveTo(player.x + player.width / 2, player.y + player.height);
-        ctx.lineTo(player.x + player.width / 2 - 5, player.y + player.height - 10);
-        ctx.lineTo(player.x + player.width / 2 + 5, player.y + player.height - 10);
-    } else if (player.direction === 'left') {
-        ctx.moveTo(player.x, player.y + player.height / 2);
-        ctx.lineTo(player.x + 10, player.y + player.height / 2 - 5);
-        ctx.lineTo(player.x + 10, player.y + player.height / 2 + 5);
-    } else if (player.direction === 'right') {
-        ctx.moveTo(player.x + player.width, player.y + player.height / 2);
-        ctx.lineTo(player.x + player.width - 10, player.y + player.height / 2 - 5);
-        ctx.lineTo(player.x + player.width - 10, player.y + player.height / 2 + 5);
-    }
-    ctx.closePath();
-    ctx.fill();
-    
-    // ===== INDICADOR DE INTERACCIÓN DISPONIBLE =====
-    let canInteract = false;
-    let interactionText = '';
-    
-    // Verificar si hay NPCs cerca
-    for (let npc of currentMap.npcs) {
-        const distance = Math.hypot(player.x - npc.x, player.y - npc.y);
-        if (distance < CONFIG.interactionDistance) {
-            canInteract = true;
-            interactionText = `Hablar con ${npc.name}`;
-            break;
-        }
-    }
-    
-    // Verificar si está en zona interactiva
-    if (!canInteract) {
-        for (let zone of currentMap.zones) {
-            if (zone.interactive && checkCollision(player, zone)) {
-                canInteract = true;
-                interactionText = `Explorar ${zone.label}`;
-                break;
-            }
-        }
-    }
-    
-    // Verificar zonas no interactivas
-    if (!canInteract) {
-        for (let zone of currentMap.zones) {
-            if (!zone.interactive && zone.type !== 'wall' && checkCollision(player, zone)) {
-                canInteract = true;
-                interactionText = `Observar ${zone.label || zone.type}`;
-                break;
-            }
-        }
-    }
-    
-    // Mostrar indicador si puede interactuar
-    if (canInteract && !gameState.dialogueActive) {
-        // Fondo del texto
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fillRect(player.x + player.width / 2 - 150, player.y + player.height + 15, 300, 35);
-        
-        // Borde
-        ctx.strokeStyle = '#00d4ff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(player.x + player.width / 2 - 150, player.y + player.height + 15, 300, 35);
-        
-        // Texto
-        ctx.fillStyle = '#ffff00';
-        ctx.font = 'bold 14px Arial';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-        ctx.shadowBlur = 5;
-        ctx.textAlign = 'center';
-        ctx.fillText('[ESPACIO] ' + interactionText, player.x + player.width / 2, player.y + player.height + 38);
-        ctx.shadowBlur = 0;
-    }
-}
-
-// ========== MINIMAPA ==========
-function drawMinimap() {
-    const scale = 0.15;
-    minimapCtx.clearRect(0, 0, minimap.width, minimap.height);
-    
-    // Fondo
-    minimapCtx.fillStyle = currentMap.background;
-    minimapCtx.fillRect(0, 0, minimap.width, minimap.height);
-    
-    // Zonas
-    for (let zone of currentMap.zones) {
-        minimapCtx.fillStyle = zone.color;
-        minimapCtx.fillRect(zone.x * scale, zone.y * scale, zone.width * scale, zone.height * scale);
-    }
-    
-    // NPCs
-    for (let npc of currentMap.npcs) {
-        minimapCtx.fillStyle = npc.color;
-        minimapCtx.fillRect(npc.x * scale, npc.y * scale, 5, 5);
-    }
-    
-    // Enemigos
-    for (let enemy of currentMap.enemies) {
-        minimapCtx.fillStyle = '#ff0000';
-        minimapCtx.fillRect(enemy.x * scale, enemy.y * scale, 5, 5);
-    }
-    
-    // Jugador
-    minimapCtx.fillStyle = player.color;
-    minimapCtx.fillRect(player.x * scale, player.y * scale, 6, 6);
-}
-
-// ========== COLISIONES ==========
-function checkCollision(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
-}
-
-// ========== INTERACCIONES ==========
-function checkInteractions() {
-    console.log('Verificando interacciones...'); // Debug
-    
-    // PRIORIDAD 1: Verificar NPCs cercanos
-    for (let npc of currentMap.npcs) {
-        const distance = Math.hypot(player.x - npc.x, player.y - npc.y);
-        console.log(`Distancia a ${npc.name}: ${distance}`); // Debug
-        if (distance < CONFIG.interactionDistance) {
-            console.log(`Interactuando con ${npc.name}`); // Debug
-            interactWithNPC(npc);
-            return; // Salir después de interactuar
-        }
-    }
-    
-    // PRIORIDAD 2: Verificar zonas interactivas (con colisión directa)
-    for (let zone of currentMap.zones) {
-        if (zone.interactive && checkCollision(player, zone)) {
-            console.log(`Interactuando con zona interactiva: ${zone.type}`); // Debug
-            interactWithZone(zone);
-            return; // Salir después de interactuar
-        }
-    }
-    
-    // PRIORIDAD 3: Verificar zonas NO interactivas (solo para información)
-    for (let zone of currentMap.zones) {
-        if (!zone.interactive && checkCollision(player, zone)) {
-            console.log(`Dentro de zona: ${zone.type}`); // Debug
-            interactWithZone(zone);
-            return; // Salir después de interactuar
-        }
-    }
-    
-    console.log('No hay nada cerca para interactuar'); // Debug
-    showNotification('No hay nada cerca para interactuar', 3000);
-}
-
-// ========== INTERACCIÓN CON NPCs ==========
-function interactWithNPC(npc) {
-    if (dialogues[npc.dialogue]) {
-        showDialogue(dialogues[npc.dialogue]);
-    }
-}
-
-// ========== INTERACCIÓN CON ZONAS ==========
-function interactWithZone(zone) {
-    console.log('Interactuando con zona:', zone.type); // Debug
-    
-    switch(zone.type) {
-        case 'library':
-            showNotification('📚 BIBLIOTECA: Lugar de conocimiento prohibido. Busca a la bibliotecaria.', 6000);
-            // Si no ha conocido a la bibliotecaria, mostrar misión
-            if (!gameState.flags.metLibrarian && !isMissionActive('findBook')) {
-                setTimeout(() => {
-                    showMissionOffer(availableMissions.findBook);
-                }, 1000);
-            }
-            break;
-            
-        case 'bathroom':
-            showNotification('🚪 BAÑO DE LA RESISTENCIA: Grafitis cubren las paredes. "LA LECTURA ES LIBERTAD"', 6000);
-            // Si no se ha unido a la resistencia
-            if (!gameState.flags.joinedResistance && !isMissionActive('joinResistance')) {
-                setTimeout(() => {
-                    showNotification('Escuchas voces susurrando. Busca a Julia aquí.', 5000);
-                }, 2000);
-            }
-            break;
-            
-        case 'computer_room':
-            if (isMissionActive('hackSystem')) {
-                showNotification('💻 Iniciando hackeo del SVE...', 3000);
-                setTimeout(() => {
-                    completeMission('hackSystem');
-                    playCinematic('computer_room.mp4');
-                }, 1500);
-            } else if (gameState.flags.hackedSystem) {
-                showNotification('💻 Sistema ya hackeado. El SVE está debilitado.', 5000);
-            } else {
-                showNotification('💻 SALA DE COMPUTADORES: El SVE te vigila desde cada pantalla.', 6000);
-                changeMentalFreedom(-5);
-                setTimeout(() => {
-                    showNotification('⚠️ Tu libertad mental disminuye bajo la vigilancia constante.', 5000);
-                }, 2000);
-            }
-            break;
-            
-        case 'classroom':
-            showNotification('🎓 SALÓN DE CLASES: Estudiantes hipnotizados miran sus pantallas.', 6000);
-            setTimeout(() => {
-                showNotification('Nadie lee. Nadie piensa. Solo obedecen.', 5000);
-            }, 2500);
-            changeMentalFreedom(-3);
-            break;
-            
-        case 'office':
-            showNotification('🏢 OFICINA DE O\'BRIEN: ¿Aliado o enemigo?', 6000);
-            // Si no ha conocido a O'Brien, mostrar misión
-            if (!gameState.flags.metOBrien && !isMissionActive('learnTruth')) {
-                setTimeout(() => {
-                    showNotification('O\'Brien está dentro. Tal vez deberías hablar con él.', 5000);
-                }, 2000);
-            }
-            break;
-            
-        case 'courtyard':
-            showNotification('🏫 PATIO CENTRAL: Zona de encuentro. Todos están conectados a sus dispositivos.', 6000);
-            setTimeout(() => {
-                showNotification('El silencio es ensordecedor. Nadie habla, solo escriben.', 5000);
-            }, 2500);
-            break;
-            
-        default:
-            showNotification('No hay nada especial aquí.', 4000);
-            break;
-    }
-}
-
-// ========== SISTEMA DE DIÁLOGOS ==========
-function showDialogue(dialogue) {
-    gameState.dialogueActive = true;
-    
-    const overlay = document.getElementById('dialogue-overlay');
-    const npcName = document.getElementById('npc-name');
-    const npcPortrait = document.getElementById('npc-portrait');
-    const dialogueText = document.getElementById('dialogue-text');
-    const dialogueChoices = document.getElementById('dialogue-choices');
-    
-    npcName.textContent = dialogue.npc;
-    npcPortrait.style.backgroundImage = `url('${dialogue.image}')`;
-    dialogueText.textContent = '';
-    dialogueChoices.innerHTML = '';
-    
-    overlay.style.display = 'flex';
-    
-    // Efecto de escritura
-    let i = 0;
-    const typingSpeed = 30;
-    function typeWriter() {
-        if (i < dialogue.text.length) {
-            dialogueText.textContent += dialogue.text.charAt(i);
-            i++;
-            setTimeout(typeWriter, typingSpeed);
         } else {
-            // Mostrar opciones después de terminar de escribir
-            dialogue.choices.forEach(choice => {
-                const button = document.createElement('button');
-                button.className = 'dialogue-choice';
-                button.textContent = choice.text;
-                button.onclick = () => handleDialogueChoice(choice);
-                dialogueChoices.appendChild(button);
-            });
+            drone.y += drone.speed * drone.direction;
+            if (drone.y >= drone.patrolEnd || drone.y <= drone.patrolStart) {
+                drone.direction *= -1;
+            }
         }
-    }
-    typeWriter();
+
+        // Detectar colisión con jugador
+        if (checkCollision(player, drone)) {
+            player.mentalFreedom = Math.max(0, player.mentalFreedom - 5);
+            showNotification('⚠️ ¡Detectado por un dron! -5 Libertad Mental');
+            updateUI();
+        }
+    });
 }
 
-function handleDialogueChoice(choice) {
-    if (choice.action === 'close') {
-        closeDialogue();
-    } else if (choice.action === 'offerMission') {
-        closeDialogue();
-        setTimeout(() => {
-            showMissionOffer(availableMissions[choice.mission]);
-        }, 500);
-    } else if (choice.next) {
-        showDialogue(dialogues[choice.next]);
+// ===========================
+// INTERACCIONES
+// ===========================
+
+function checkInteractions() {
+    if (!keys.interact) return;
+
+    console.log('🔍 Verificando interacciones...');
+
+    // Prioridad 1: NPCs
+    for (let npc of npcs) {
+        if (isNear(player, npc, 50)) {
+            console.log(`💬 Interactuando con ${npc.name}`);
+            keys.interact = false;
+            showDialogue(npc);
+            return;
+        }
     }
+
+    // Prioridad 2: Zonas interactivas
+    for (let zone of zones) {
+        if (isInside(player, zone)) {
+            console.log(`📍 Interactuando con zona: ${zone.name}`);
+            keys.interact = false;
+            interactWithZone(zone);
+            return;
+        }
+    }
+
+    console.log('❌ No hay nada cerca para interactuar');
+    keys.interact = false;
+}
+
+function interactWithZone(zone) {
+    console.log(`🎯 Zona activada: ${zone.name}`);
+
+    switch(zone.name) {
+        case 'Biblioteca Antigua':
+            if (missions.mission1.active && missions.mission1.progress === 0) {
+                missions.mission1.progress = 1;
+                player.mentalFreedom = Math.min(100, player.mentalFreedom + 20);
+                unlockWord('LIBERTAD');
+                showNotification('📚 ¡Has encontrado palabras prohibidas! +20 Libertad Mental');
+                showNotification('📖 Palabra desbloqueada: LIBERTAD');
+                updateUI();
+            } else {
+                showNotification('📚 Biblioteca Antigua: Libros polvorientos y olvidados');
+            }
+            break;
+
+        case 'Sala de Control SVE':
+            if (missions.mission2.active && missions.mission2.progress === 0) {
+                missions.mission2.progress = 1;
+                player.mentalFreedom = Math.min(100, player.mentalFreedom + 30);
+                unlockWord('VERDAD');
+                showNotification('💻 ¡Has hackeado el sistema SVE! +30 Libertad Mental');
+                showNotification('📖 Palabra desbloqueada: VERDAD');
+                updateUI();
+            } else {
+                showNotification('💻 Sala de Control SVE: El Gran Hermano te observa');
+            }
+            break;
+
+        case 'Salón de Clases':
+            showNotification('🏫 Salón de Clases: Estudiantes conectados a sus dispositivos');
+            break;
+
+        case 'Sala de Computadoras':
+            showNotification('💾 Sala de Computadoras: Pantallas brillantes, mentes apagadas');
+            break;
+
+        case 'Patio':
+            showNotification('🌳 Patio: Todos miran sus teléfonos en silencio');
+            break;
+
+        case 'Baño (Resistencia)':
+            showNotification('🚪 Baño: Grafitis de resistencia en las paredes');
+            break;
+
+        case 'Exterior del Colegio':
+            showNotification('🏛️ Exterior: El colegio rural bajo vigilancia constante');
+            break;
+
+        default:
+            showNotification(`📍 Has entrado a: ${zone.name}`);
+    }
+}
+
+// ===========================
+// SISTEMA DE DIÁLOGO
+// ===========================
+
+let currentNPC = null;
+let currentMissionOffer = null;
+
+function showDialogue(npc) {
+    currentNPC = npc;
+    
+    document.getElementById('npc-name').textContent = npc.name;
+    document.getElementById('dialogue-text').textContent = npc.dialogue;
+    
+    const choicesContainer = document.getElementById('dialogue-choices');
+    choicesContainer.innerHTML = '';
+
+    if (npc.hasMission && npc.missionId) {
+        const mission = missions[npc.missionId];
+        if (!mission.active && !mission.completed) {
+            const btn = document.createElement('button');
+            btn.textContent = '¿Qué necesitas que haga?';
+            btn.addEventListener('click', () => {
+                closeDialogue();
+                offerMission(mission);
+            });
+            choicesContainer.appendChild(btn);
+        }
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Adiós';
+    closeBtn.addEventListener('click', closeDialogue);
+    choicesContainer.appendChild(closeBtn);
+
+    document.getElementById('dialogue-overlay').classList.add('active');
 }
 
 function closeDialogue() {
-    gameState.dialogueActive = false;
-    document.getElementById('dialogue-overlay').style.display = 'none';
+    document.getElementById('dialogue-overlay').classList.remove('active');
+    currentNPC = null;
 }
 
-// ========== SISTEMA DE MISIONES ==========
-function showMissionOffer(mission) {
-    const overlay = document.getElementById('mission-overlay');
-    document.getElementById('mission-title').textContent = mission.name;
+// ===========================
+// SISTEMA DE MISIONES
+// ===========================
+
+function offerMission(mission) {
+    currentMissionOffer = mission;
+    
+    document.getElementById('mission-title').textContent = mission.title;
     document.getElementById('mission-description').textContent = mission.description;
     
     const objectivesList = document.getElementById('mission-objectives-list');
@@ -906,158 +572,160 @@ function showMissionOffer(mission) {
         objectivesList.appendChild(li);
     });
     
-    const rewardsText = document.getElementById('mission-rewards-text');
-    rewardsText.innerHTML = `
-        <p>🧠 Libertad Mental: +${mission.rewards.mentalFreedom}</p>
-        <p>📖 Palabras: ${mission.rewards.words.join(', ')}</p>
-    `;
+    document.getElementById('mission-rewards-text').textContent = mission.rewards;
     
-    document.getElementById('accept-mission-btn').onclick = () => {
-        acceptMission(mission);
-        overlay.style.display = 'none';
-    };
-    
-    document.getElementById('decline-mission-btn').onclick = () => {
-        overlay.style.display = 'none';
-        showNotification('Misión rechazada', 3000);
-    };
-    
-    overlay.style.display = 'flex';
+    document.getElementById('mission-overlay').classList.add('active');
 }
 
-function acceptMission(mission) {
-    gameState.missions.push(mission);
-    updateUI();
-    showNotification(`✅ Misión aceptada: ${mission.name}`, 5000);
-    
-    // Actualizar flags
-    if (mission.id === 'findBook') gameState.flags.metLibrarian = true;
-    if (mission.id === 'joinResistance') gameState.flags.metJulia = true;
-    if (mission.id === 'hackSystem' || mission.id === 'learnTruth') gameState.flags.metOBrien = true;
+function acceptMission() {
+    if (currentMissionOffer) {
+        currentMissionOffer.active = true;
+        activeMissions.push(currentMissionOffer);
+        showNotification(`✅ Misión aceptada: ${currentMissionOffer.title}`);
+        updateUI();
+    }
+    document.getElementById('mission-overlay').classList.remove('active');
+    currentMissionOffer = null;
 }
 
-function completeMission(missionId) {
-    const mission = gameState.missions.find(m => m.id === missionId);
-    if (!mission) return;
-    
-    // Remover de misiones activas
-    gameState.missions = gameState.missions.filter(m => m.id !== missionId);
-    gameState.completedMissions.push(mission);
-    
-    // Dar recompensas
-    changeMentalFreedom(mission.rewards.mentalFreedom);
-    mission.rewards.words.forEach(word => {
-        if (!gameState.unlockedWords.includes(word)) {
-            gameState.unlockedWords.push(word);
-        }
-    });
-    
-    // Actualizar flags
-    if (missionId === 'hackSystem') gameState.flags.hackedSystem = true;
-    if (missionId === 'joinResistance') gameState.flags.joinedResistance = true;
-    if (missionId === 'findBook') gameState.flags.foundBook = true;
-    
-    updateUI();
-    showNotification(`🎉 ¡Misión completada! ${mission.name}`, 6000);
-    
-    setTimeout(() => {
-        showNotification(`📖 Nuevas palabras desbloqueadas: ${mission.rewards.words.join(', ')}`, 6000);
-    }, 2000);
+function declineMission() {
+    showNotification('❌ Misión rechazada');
+    document.getElementById('mission-overlay').classList.remove('active');
+    currentMissionOffer = null;
 }
 
-function isMissionActive(missionId) {
-    return gameState.missions.some(m => m.id === missionId);
-}
-
-// ========== PANEL DE MISIONES ==========
-function showMissionsPanel() {
+function toggleMissionsOverlay() {
     const overlay = document.getElementById('missions-overlay');
+    const isActive = overlay.classList.contains('active');
+    
+    if (isActive) {
+        overlay.classList.remove('active');
+    } else {
+        updateMissionsPanel();
+        overlay.classList.add('active');
+    }
+}
+
+function updateMissionsPanel() {
     const activeList = document.getElementById('active-missions-list');
     const completedList = document.getElementById('completed-missions-list');
     
     activeList.innerHTML = '';
     completedList.innerHTML = '';
     
-    if (gameState.missions.length === 0) {
+    const activeMissionsList = Object.values(missions).filter(m => m.active && !m.completed);
+    const completedMissionsList = Object.values(missions).filter(m => m.completed);
+    
+    if (activeMissionsList.length === 0) {
         activeList.innerHTML = '<li class="empty-state">No tienes misiones activas</li>';
     } else {
-        gameState.missions.forEach(mission => {
+        activeMissionsList.forEach(mission => {
             const li = document.createElement('li');
             li.innerHTML = `
-                <strong>${mission.name}</strong><br>
-                ${mission.description}
+                <strong>${mission.title}</strong><br>
+                <small>${mission.description}</small>
             `;
             activeList.appendChild(li);
         });
     }
     
-    if (gameState.completedMissions.length === 0) {
-        completedList.innerHTML = '<li class="empty-state">No has completado misiones aún</li>';
+    if (completedMissionsList.length === 0) {
+        completedList.innerHTML = '<li class="empty-state">No has completado misiones</li>';
     } else {
-        gameState.completedMissions.forEach(mission => {
+        completedMissionsList.forEach(mission => {
             const li = document.createElement('li');
-            li.innerHTML = `
-                <strong>✅ ${mission.name}</strong><br>
-                Completada
-            `;
+            li.innerHTML = `<strong>✓ ${mission.title}</strong>`;
             completedList.appendChild(li);
         });
     }
-    
-    overlay.style.display = 'flex';
 }
 
-function closeMissionsPanel() {
-    document.getElementById('missions-overlay').style.display = 'none';
-}
+// ===========================
+// SISTEMA DE PAUSA
+// ===========================
 
-// ========== SISTEMA DE LIBERTAD MENTAL ==========
-function changeMentalFreedom(amount) {
-    gameState.mentalFreedom = Math.max(
-        CONFIG.mentalFreedomMin,
-        Math.min(CONFIG.mentalFreedomMax, gameState.mentalFreedom + amount)
-    );
-    updateUI();
+function togglePause() {
+    isPaused = !isPaused;
+    const overlay = document.getElementById('pause-overlay');
     
-    // Verificar estado crítico
-    if (gameState.mentalFreedom <= 10) {
-        showNotification('⚠️ ALERTA: Tu libertad mental está en nivel crítico', 5000);
-    } else if (gameState.mentalFreedom >= 90) {
-        showNotification('✨ ¡Tu mente está casi completamente libre!', 5000);
-    }
-}
-
-// ========== ACTUALIZAR UI ==========
-function updateUI() {
-    // Libertad mental
-    document.getElementById('mental-freedom-value').textContent = gameState.mentalFreedom;
-    document.getElementById('mental-freedom-fill').style.width = gameState.mentalFreedom + '%';
-    
-    // Palabras desbloqueadas
-    document.getElementById('words-count').textContent = gameState.unlockedWords.length;
-    const wordsList = document.getElementById('words-list');
-    wordsList.innerHTML = '';
-    if (gameState.unlockedWords.length === 0) {
-        wordsList.innerHTML = '<li class="empty-state">No has desbloqueado palabras</li>';
+    if (isPaused) {
+        overlay.classList.add('active');
+        console.log('⏸ Juego pausado');
     } else {
-        gameState.unlockedWords.forEach(word => {
-            const li = document.createElement('li');
-            li.textContent = word;
-            wordsList.appendChild(li);
-        });
-    }
-    
-    // Misión actual
-    const currentMissionDiv = document.getElementById('current-mission-name');
-    if (gameState.missions.length > 0) {
-        currentMissionDiv.textContent = gameState.missions[0].name;
-    } else {
-        currentMissionDiv.textContent = 'No hay misión activa. Explora y habla con NPCs.';
+        overlay.classList.remove('active');
+        console.log('▶ Juego reanudado');
     }
 }
 
-// ========== NOTIFICACIONES ==========
-function showNotification(message, duration = 5000) {
+// ===========================
+// GUARDAR/CARGAR
+// ===========================
+
+function saveGame() {
+    const saveData = {
+        player: player,
+        missions: missions,
+        activeMissions: activeMissions,
+        completedMissions: completedMissions
+    };
+    
+    localStorage.setItem('2084_save', JSON.stringify(saveData));
+    showNotification('💾 Partida guardada');
+    console.log('💾 Juego guardado');
+}
+
+function loadGame() {
+    const saveData = localStorage.getItem('2084_save');
+    
+    if (saveData) {
+        const data = JSON.parse(saveData);
+        
+        player.x = data.player.x;
+        player.y = data.player.y;
+        player.mentalFreedom = data.player.mentalFreedom;
+        player.unlockedWords = data.player.unlockedWords;
+        
+        Object.assign(missions, data.missions);
+        activeMissions = data.activeMissions;
+        completedMissions = data.completedMissions;
+        
+        updateUI();
+        showNotification('📂 Partida cargada');
+        console.log('📂 Juego cargado');
+        
+        if (isPaused) togglePause();
+    } else {
+        showNotification('❌ No hay partida guardada');
+    }
+}
+
+function restartGame() {
+    if (confirm('¿Estás seguro de que quieres reiniciar el juego?')) {
+        location.reload();
+    }
+}
+
+function exitToMenu() {
+    if (confirm('¿Salir al menú principal?')) {
+        document.getElementById('game-container').style.display = 'none';
+        document.getElementById('start-screen').style.display = 'flex';
+        gameRunning = false;
+        isPaused = false;
+        document.getElementById('pause-overlay').classList.remove('active');
+    }
+}
+
+// ===========================
+// UTILIDADES
+// ===========================
+
+function unlockWord(word) {
+    if (!player.unlockedWords.includes(word)) {
+        player.unlockedWords.push(word);
+    }
+}
+
+function showNotification(message) {
     const container = document.getElementById('notification-container');
     const notification = document.createElement('div');
     notification.className = 'notification';
@@ -1066,79 +734,186 @@ function showNotification(message, duration = 5000) {
     container.appendChild(notification);
     
     setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(50px)';
-        setTimeout(() => {
-            if (container.contains(notification)) {
-                container.removeChild(notification);
-            }
-        }, 300);
-    }, duration);
+        notification.style.animation = 'slideInRight 0.3s ease reverse';
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
 }
 
-// ========== CINEMÁTICAS ==========
-function playCinematic(videoFile) {
-    showNotification(`🎬 Reproduciendo cinemática: ${videoFile}`, 4000);
-    // Aquí podrías implementar un reproductor de video
-    console.log('Cinemática:', videoFile);
-}
-
-// ========== PAUSA ==========
-function togglePause() {
-    gameState.paused = !gameState.paused;
-    const overlay = document.getElementById('pause-overlay');
-    overlay.style.display = gameState.paused ? 'flex' : 'none';
-}
-
-function resumeGame() {
-    gameState.paused = false;
-    document.getElementById('pause-overlay').style.display = 'none';
-}
-
-function restartGame() {
-    location.reload();
-}
-
-function exitGame() {
-    if (confirm('¿Seguro que quieres salir del juego?')) {
-        window.close();
-    }
-}
-
-// ========== SISTEMA DE GUARDADO ==========
-function saveGame() {
-    const saveData = {
-        player: player,
-        gameState: gameState,
-        timestamp: Date.now()
-    };
-    localStorage.setItem('2084_save', JSON.stringify(saveData));
-    showNotification('💾 Juego guardado exitosamente', 4000);
-}
-
-function loadGame() {
-    const saveData = localStorage.getItem('2084_save');
-    if (saveData) {
-        const data = JSON.parse(saveData);
-        Object.assign(player, data.player);
-        Object.assign(gameState, data.gameState);
-        updateUI();
-        showNotification('📂 Juego cargado exitosamente', 4000);
-        resumeGame();
+function updateUI() {
+    // Libertad Mental
+    document.getElementById('mental-freedom-value').textContent = player.mentalFreedom;
+    document.getElementById('mental-freedom-fill').style.width = player.mentalFreedom + '%';
+    
+    // Palabras
+    document.getElementById('words-count').textContent = player.unlockedWords.length;
+    
+    const wordsList = document.getElementById('words-list');
+    wordsList.innerHTML = '';
+    
+    if (player.unlockedWords.length === 0) {
+        wordsList.innerHTML = '<li class="empty-state">No has desbloqueado palabras</li>';
     } else {
-        showNotification('❌ No hay partida guardada', 4000);
+        player.unlockedWords.forEach(word => {
+            const li = document.createElement('li');
+            li.textContent = word;
+            wordsList.appendChild(li);
+        });
+    }
+    
+    // Misión actual
+    const activeMission = Object.values(missions).find(m => m.active && !m.completed);
+    const missionNameEl = document.getElementById('current-mission-name');
+    
+    if (activeMission) {
+        missionNameEl.textContent = activeMission.title;
+    } else {
+        missionNameEl.textContent = 'Explora el colegio';
     }
 }
 
-// ========== EVENT LISTENERS ==========
-document.getElementById('close-dialogue-btn').addEventListener('click', closeDialogue);
-document.getElementById('close-missions-btn').addEventListener('click', closeMissionsPanel);
-document.getElementById('show-missions-btn').addEventListener('click', showMissionsPanel);
-document.getElementById('resume-btn').addEventListener('click', resumeGame);
-document.getElementById('save-btn').addEventListener('click', saveGame);
-document.getElementById('load-btn').addEventListener('click', loadGame);
-document.getElementById('restart-btn').addEventListener('click', restartGame);
-document.getElementById('exit-btn').addEventListener('click', exitGame);
+function checkCollision(obj1, obj2) {
+    return obj1.x < obj2.x + obj2.width &&
+           obj1.x + obj1.width > obj2.x &&
+           obj1.y < obj2.y + obj2.height &&
+           obj1.y + obj1.height > obj2.y;
+}
 
-// ========== INICIAR JUEGO ==========
-window.addEventListener('load', init);
+function isNear(obj1, obj2, distance) {
+    const dx = (obj1.x + obj1.width / 2) - (obj2.x + obj2.width / 2);
+    const dy = (obj1.y + obj1.height / 2) - (obj2.y + obj2.height / 2);
+    return Math.sqrt(dx * dx + dy * dy) < distance;
+}
+
+function isInside(obj, zone) {
+    return obj.x + obj.width / 2 > zone.x &&
+           obj.x + obj.width / 2 < zone.x + zone.width &&
+           obj.y + obj.height / 2 > zone.y &&
+           obj.y + obj.height / 2 < zone.y + zone.height;
+}
+
+// ===========================
+// DIBUJO
+// ===========================
+
+function draw() {
+    // Limpiar canvas
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Dibujar zonas
+    zones.forEach(zone => {
+        ctx.fillStyle = zone.color;
+        ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
+        
+        ctx.strokeStyle = 'rgba(0, 255, 204, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(zone.x, zone.y, zone.width, zone.height);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px Rajdhani';
+        ctx.textAlign = 'center';
+        ctx.fillText(zone.name, zone.x + zone.width / 2, zone.y + zone.height / 2);
+    });
+    
+    // Dibujar NPCs
+    npcs.forEach(npc => {
+        ctx.fillStyle = npc.color;
+        ctx.fillRect(npc.x, npc.y, npc.width, npc.height);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px Rajdhani';
+        ctx.textAlign = 'center';
+        ctx.fillText(npc.name, npc.x + npc.width / 2, npc.y - 5);
+        
+        // Indicador de misión
+        if (npc.hasMission && npc.missionId) {
+            const mission = missions[npc.missionId];
+            if (!mission.active && !mission.completed) {
+                ctx.fillStyle = '#ffa502';
+                ctx.font = 'bold 16px Rajdhani';
+                ctx.fillText('!', npc.x + npc.width / 2, npc.y - 15);
+            }
+        }
+    });
+    
+    // Dibujar drones
+    drones.forEach(drone => {
+        ctx.fillStyle = '#ff4757';
+        ctx.fillRect(drone.x, drone.y, drone.width, drone.height);
+        
+        ctx.strokeStyle = '#ff4757';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(drone.x + drone.width / 2, drone.y + drone.height / 2, 40, 0, Math.PI * 2);
+        ctx.stroke();
+    });
+    
+    // Dibujar jugador
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+    
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(player.x, player.y, player.width, player.height);
+    
+    // Indicador de interacción
+    let canInteract = false;
+    
+    for (let npc of npcs) {
+        if (isNear(player, npc, 50)) {
+            canInteract = true;
+            break;
+        }
+    }
+    
+    if (!canInteract) {
+        for (let zone of zones) {
+            if (isInside(player, zone) && zone.interactive) {
+                canInteract = true;
+                break;
+            }
+        }
+    }
+    
+    const indicator = document.getElementById('interaction-indicator');
+    if (canInteract) {
+        indicator.style.display = 'block';
+    } else {
+        indicator.style.display = 'none';
+    }
+}
+
+function drawMinimap() {
+    const scale = minimap.width / canvas.width;
+    
+    minimapCtx.fillStyle = '#000';
+    minimapCtx.fillRect(0, 0, minimap.width, minimap.height);
+    
+    // Zonas
+    zones.forEach(zone => {
+        minimapCtx.fillStyle = zone.color;
+        minimapCtx.fillRect(zone.x * scale, zone.y * scale, zone.width * scale, zone.height * scale);
+    });
+    
+    // Jugador
+    minimapCtx.fillStyle = '#00ffcc';
+    minimapCtx.fillRect(player.x * scale, player.y * scale, 4, 4);
+    
+    // NPCs
+    npcs.forEach(npc => {
+        minimapCtx.fillStyle = npc.color;
+        minimapCtx.fillRect(npc.x * scale, npc.y * scale, 3, 3);
+    });
+    
+    // Drones
+    drones.forEach(drone => {
+        minimapCtx.fillStyle = '#ff4757';
+        minimapCtx.fillRect(drone.x * scale, drone.y * scale, 2, 2);
+    });
+}
+
+// ===========================
+// INICIAR CUANDO CARGUE LA PÁGINA
+// ===========================
+
+console.log('📜 game.js cargado correctamente');
