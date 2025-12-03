@@ -91,140 +91,138 @@ function setupTouchControls() {
     const btnPause = document.getElementById('btn-pause');
 
     if (!btnUp) {
-        console.warn('Controles táctiles no encontrados, se omite configuración táctil.');
+        console.warn('Controles táctiles no encontrados');
         return;
     }
 
-    // Helpers para manejar presión contínua
+    console.log('✅ Controles táctiles configurados');
+
+    // Función helper para botones direccionales (mantener presionado)
     function bindDirectionalButton(button, keyName) {
         button.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             keys[keyName] = true;
+            console.log(`🎮 Tocado: ${keyName} = true`);
         }, { passive: false });
 
         button.addEventListener('touchend', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             keys[keyName] = false;
+            console.log(`🎮 Soltado: ${keyName} = false`);
         }, { passive: false });
 
         button.addEventListener('touchcancel', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             keys[keyName] = false;
         }, { passive: false });
+
+        // También soporte para mouse (para probar en escritorio)
+        button.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            keys[keyName] = true;
+        });
+
+        button.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        });
     }
 
+    // Vincular botones direccionales
     bindDirectionalButton(btnUp, 'up');
     bindDirectionalButton(btnDown, 'down');
     bindDirectionalButton(btnLeft, 'left');
     bindDirectionalButton(btnRight, 'right');
 
-    // Botón de interactuar (como ESPACIO/E)
+    // Botón de INTERACTUAR (⚡)
     btnInteract.addEventListener('touchstart', (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        console.log('⚡ Botón interactuar presionado');
+        
+        // Simular presión de ESPACIO
         keys.interact = true;
-        // Si tu lógica usa una función específica para interactuar:
-        if (typeof handleInteraction === 'function') {
-            handleInteraction();
-        }
+        
+        // Disparar evento de teclado para compatibilidad
+        const spaceEvent = new KeyboardEvent('keydown', {
+            key: ' ',
+            code: 'Space',
+            keyCode: 32,
+            which: 32,
+            bubbles: true
+        });
+        window.dispatchEvent(spaceEvent);
+        
         setTimeout(() => {
             keys.interact = false;
-        }, 150);
+            const spaceUpEvent = new KeyboardEvent('keyup', {
+                key: ' ',
+                code: 'Space',
+                keyCode: 32,
+                which: 32,
+                bubbles: true
+            });
+            window.dispatchEvent(spaceUpEvent);
+        }, 200);
     }, { passive: false });
 
-    // Botón de misiones (como tecla M)
+    // Botón de MISIONES (📋)
     btnMissions.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        keys.missions = true;
-        if (typeof toggleMissionsOverlay === 'function') {
-            toggleMissionsOverlay();
-        }
+        e.stopPropagation();
+        console.log('📋 Botón misiones presionado');
+        
+        // Simular presión de M
+        const mEvent = new KeyboardEvent('keydown', {
+            key: 'm',
+            code: 'KeyM',
+            keyCode: 77,
+            which: 77,
+            bubbles: true
+        });
+        window.dispatchEvent(mEvent);
+        
         setTimeout(() => {
-            keys.missions = false;
-        }, 150);
+            const mUpEvent = new KeyboardEvent('keyup', {
+                key: 'm',
+                code: 'KeyM',
+                keyCode: 77,
+                which: 77,
+                bubbles: true
+            });
+            window.dispatchEvent(mUpEvent);
+        }, 200);
     }, { passive: false });
 
-    // Botón de pausa (como ESC)
+    // Botón de PAUSA (⏸) - este ya funciona, pero lo dejamos igual
     btnPause.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        keys.pause = true;
-        if (typeof togglePause === 'function') {
-            togglePause();
-        }
+        e.stopPropagation();
+        console.log('⏸ Botón pausa presionado');
+        
+        // Simular presión de ESC
+        const escEvent = new KeyboardEvent('keydown', {
+            key: 'Escape',
+            code: 'Escape',
+            keyCode: 27,
+            which: 27,
+            bubbles: true
+        });
+        window.dispatchEvent(escEvent);
+        
         setTimeout(() => {
-            keys.pause = false;
-        }, 150);
-    }, { passive: false });
-}
-function setupTouchControls() {
-    const btnUp = document.getElementById('btn-up');
-    const btnDown = document.getElementById('btn-down');
-    const btnLeft = document.getElementById('btn-left');
-    const btnRight = document.getElementById('btn-right');
-    const btnInteract = document.getElementById('btn-interact');
-    const btnMissions = document.getElementById('btn-missions');
-    const btnPause = document.getElementById('btn-pause');
-
-    if (!btnUp) {
-        console.warn('Controles táctiles no encontrados, se omite configuración táctil.');
-        return;
-    }
-
-    function bindDirectionalButton(button, keyName) {
-        button.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            keys[keyName] = true;
-        }, { passive: false });
-
-        button.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            keys[keyName] = false;
-        }, { passive: false });
-
-        button.addEventListener('touchcancel', (e) => {
-            e.preventDefault();
-            keys[keyName] = false;
-        }, { passive: false });
-    }
-
-    bindDirectionalButton(btnUp, 'up');
-    bindDirectionalButton(btnDown, 'down');
-    bindDirectionalButton(btnLeft, 'left');
-    bindDirectionalButton(btnRight, 'right');
-
-    // Interactuar (como ESPACIO/E)
-    btnInteract.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        keys.interact = true;
-        if (typeof handleInteraction === 'function') {
-            handleInteraction();
-        }
-        setTimeout(() => {
-            keys.interact = false;
-        }, 150);
-    }, { passive: false });
-
-    // Misiones (como tecla M)
-    btnMissions.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        keys.missions = true;
-        if (typeof toggleMissionsOverlay === 'function') {
-            toggleMissionsOverlay();
-        }
-        setTimeout(() => {
-            keys.missions = false;
-        }, 150);
-    }, { passive: false });
-
-    // Pausa (como ESC)
-    btnPause.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        keys.pause = true;
-        if (typeof togglePause === 'function') {
-            togglePause();
-        }
-        setTimeout(() => {
-            keys.pause = false;
-        }, 150);
+            const escUpEvent = new KeyboardEvent('keyup', {
+                key: 'Escape',
+                code: 'Escape',
+                keyCode: 27,
+                which: 27,
+                bubbles: true
+            });
+            window.dispatchEvent(escUpEvent);
+        }, 200);
     }, { passive: false });
 }
 // ========== MAPAS ==========
