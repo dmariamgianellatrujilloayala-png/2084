@@ -3,198 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2084 - La Resistencia de las Palabras</title>
+    <title>2084</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- ========== PANTALLA DE INICIO ========== -->
-    <div id="start-screen">
-        <div class="start-content">
-            <h1 class="glitch" data-text="2084">2084</h1>
+    <div id="start-screen" class="screen active">
+        <div class="glitch-container">
+            <h1 class="glitch-title" data-text="2084">2084</h1>
             <p class="subtitle">La Resistencia de las Palabras</p>
-            <div class="menu-buttons">
-                <button class="menu-btn" onclick="startNewGame()">
-                    <span class="btn-icon">▶</span>
-                    Nuevo Juego
-                </button>
-                <button class="menu-btn" onclick="loadGameFromMenu()">
-                    <span class="btn-icon">📂</span>
-                    Cargar Partida
-                </button>
-                <button class="menu-btn" onclick="showCredits()">
-                    <span class="btn-icon">ℹ</span>
-                    Créditos
-                </button>
+        </div>
+        <div class="menu-buttons">
+            <button class="menu-btn" onclick="startNewGame()">
+                <span class="btn-icon">▶</span> Nuevo Juego
+            </button>
+            <button class="menu-btn" onclick="continueGame()">
+                <span class="btn-icon">↻</span> Continuar
+            </button>
+            <button class="menu-btn" onclick="showCredits()">
+                <span class="btn-icon">ℹ</span> Créditos
+            </button>
+        </div>
+    </div>
+
+    <!-- ========== CONTENEDOR DEL JUEGO ========== -->
+    <div id="game-container" class="game-container">
+        <!-- Canvas principal -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Indicador de interacción -->
+        <div id="interaction-indicator" class="interaction-indicator">
+            Presiona ESPACIO o E para interactuar
+        </div>
+
+        <!-- Panel lateral derecho -->
+        <div class="side-panel">
+            <div class="panel-section">
+                <h3 class="panel-title">LIBERTAD MENTAL</h3>
+                <div class="progress-bar">
+                    <div id="mental-freedom-fill" class="progress-fill"></div>
+                    <span id="mental-freedom-value" class="progress-value">50</span>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3 class="panel-title">PALABRAS DESBLOQUEADAS</h3>
+                <div class="words-counter">
+                    <span id="words-count">0</span> palabras
+                </div>
+                <ul id="words-list" class="words-list">
+                    <li class="empty-state">No has desbloqueado palabras</li>
+                </ul>
+            </div>
+
+            <div class="panel-section">
+                <h3 class="panel-title">MISIÓN ACTUAL</h3>
+                <p id="current-mission-name" class="mission-name">Explora el colegio</p>
+                <button id="show-missions-btn" class="panel-btn">Ver Misiones</button>
+            </div>
+
+            <div class="panel-section">
+                <canvas id="minimap"></canvas>
+            </div>
+        </div>
+
+        <!-- Controles táctiles -->
+        <div class="touch-controls">
+            <div class="dpad">
+                <button id="btn-up" class="dpad-btn dpad-up">▲</button>
+                <button id="btn-down" class="dpad-btn dpad-down">▼</button>
+                <button id="btn-left" class="dpad-btn dpad-left">◀</button>
+                <button id="btn-right" class="dpad-btn dpad-right">▶</button>
+            </div>
+            <div class="action-buttons">
+                <button id="btn-interact" class="action-btn">INTERACTUAR</button>
+                <button id="btn-missions" class="action-btn">MISIONES</button>
+                <button id="btn-pause" class="action-btn">PAUSA</button>
             </div>
         </div>
     </div>
 
-    <!-- ========== JUEGO PRINCIPAL ========== -->
-    <div id="game-container" style="display: none;">
-        <!-- HEADER -->
-        <header id="game-header">
-            <div class="header-left">
-                <h1 class="game-title">2084</h1>
-                <span class="game-subtitle">La Resistencia de las Palabras</span>
+    <!-- ========== OVERLAY DE CINEMÁTICAS (IMÁGENES / VIDEOS) ========== -->
+    <div id="cinematic-overlay" class="overlay">
+        <div class="cinematic-box">
+            <div class="cinematic-header">
+                <h3 id="cinematic-title" class="cinematic-title">2084</h3>
+                <button id="close-cinematic-btn" class="close-btn">×</button>
             </div>
-            <div class="header-stats">
-                <div class="stat-box">
-                    <span class="stat-label">🧠 Libertad Mental</span>
-                    <div class="stat-bar">
-                        <div id="mental-freedom-fill" class="stat-fill"></div>
-                    </div>
-                    <span id="mental-freedom-value" class="stat-value">50</span>
+            <div class="cinematic-content">
+                <div class="cinematic-media-container">
+                    <img id="cinematic-image" class="cinematic-media" style="display:none;" />
+                    <video id="cinematic-video" class="cinematic-media" style="display:none;" playsinline></video>
                 </div>
-                <div class="stat-box">
-                    <span class="stat-label">📖 Palabras</span>
-                    <span id="words-count" class="stat-value">0</span>
-                </div>
+                <p id="cinematic-text" class="cinematic-text"></p>
             </div>
-        </header>
-
-        <!-- ÁREA DE JUEGO -->
-        <div id="game-area">
-            <!-- CANVAS PRINCIPAL -->
-            <div class="canvas-container">
-                <canvas id="game-canvas"></canvas>
-                <div class="vignette"></div>
-                
-                <!-- INDICADOR DE INTERACCIÓN -->
-                <div id="interaction-indicator" style="display: none;">
-                    Presiona ESPACIO o ⚡
-                </div>
-            </div>
-
-            <!-- CONTROLES TÁCTILES -->
-            <div id="touch-controls" class="touch-controls">
-                <div class="touch-left">
-                    <button class="touch-btn" id="btn-up">▲</button>
-                    <div class="touch-middle-row">
-                        <button class="touch-btn" id="btn-left">◀</button>
-                        <button class="touch-btn" id="btn-down">▼</button>
-                        <button class="touch-btn" id="btn-right">▶</button>
-                    </div>
-                </div>
-                <div class="touch-right">
-                    <button class="touch-btn action" id="btn-interact">⚡</button>
-                    <button class="touch-btn action" id="btn-missions">📋</button>
-                    <button class="touch-btn action" id="btn-pause">⏸</button>
-                </div>
-            </div>
-
-            <!-- PANEL LATERAL -->
-            <aside id="side-panel">
-                <!-- MINIMAPA -->
-                <section class="panel-section">
-                    <h3 class="panel-title">
-                        <span class="title-icon">🗺️</span>
-                        Mapa
-                    </h3>
-                    <div class="minimap-container">
-                        <canvas id="minimap" width="150" height="105"></canvas>
-                        <div class="minimap-border"></div>
-                    </div>
-                </section>
-
-                <!-- MISIÓN ACTUAL -->
-                <section class="panel-section">
-                    <h3 class="panel-title">
-                        <span class="title-icon">🎯</span>
-                        Misión Actual
-                    </h3>
-                    <div class="current-mission">
-                        <div id="current-mission-name" class="mission-name">
-                            Explora el colegio
-                        </div>
-                        <button id="show-missions-btn" class="panel-btn">
-                            Ver Todas las Misiones
-                        </button>
-                    </div>
-                </section>
-
-                <!-- PALABRAS DESBLOQUEADAS -->
-                <section class="panel-section">
-                    <h3 class="panel-title">
-                        <span class="title-icon">📚</span>
-                        Palabras Desbloqueadas
-                    </h3>
-                    <ul id="words-list" class="word-list">
-                        <li class="empty-state">No has desbloqueado palabras</li>
-                    </ul>
-                </section>
-
-                <!-- CONTROLES -->
-                <section class="panel-section controls-section">
-                    <h3 class="panel-title">
-                        <span class="title-icon">🎮</span>
-                        Controles
-                    </h3>
-                    <div class="controls-grid">
-                        <div class="control-item">
-                            <kbd>WASD</kbd>
-                            <span>Mover</span>
-                        </div>
-                        <div class="control-item">
-                            <kbd>ESPACIO</kbd>
-                            <span>Interactuar</span>
-                        </div>
-                        <div class="control-item">
-                            <kbd>M</kbd>
-                            <span>Misiones</span>
-                        </div>
-                        <div class="control-item">
-                            <kbd>ESC</kbd>
-                            <span>Pausa</span>
-                        </div>
-                    </div>
-                </section>
-            </aside>
         </div>
     </div>
+
+    <!-- ========== CONTENEDOR DE NOTIFICACIONES ========== -->
+    <div id="notification-container" class="notification-container"></div>
 
     <!-- ========== OVERLAY DE DIÁLOGO ========== -->
     <div id="dialogue-overlay" class="overlay">
         <div class="dialogue-box">
             <div class="dialogue-header">
-                <div id="npc-portrait" class="npc-portrait"></div>
-                <div class="npc-info">
-                    <h3 id="npc-name" class="npc-name">NPC</h3>
-                </div>
-                <button id="close-dialogue-btn" class="close-dialogue-btn">×</button>
+                <h3 id="npc-name" class="npc-name">NPC</h3>
+                <button id="close-dialogue-btn" class="close-btn">×</button>
             </div>
             <div class="dialogue-content">
                 <p id="dialogue-text" class="dialogue-text"></p>
+                <div id="dialogue-choices" class="dialogue-choices"></div>
             </div>
-            <div id="dialogue-choices" class="dialogue-choices"></div>
         </div>
     </div>
 
-    <!-- ========== OVERLAY DE OFERTA DE MISIÓN ========== -->
+    <!-- ========== OVERLAY DE MISIÓN ========== -->
     <div id="mission-overlay" class="overlay">
-        <div class="mission-box">
-            <div class="mission-header">
-                <h3 id="mission-title" class="mission-title">Misión</h3>
-                <div class="mission-badge">!</div>
+        <div class="missions-container">
+            <div class="missions-header">
+                <h2 class="missions-title">NUEVA MISIÓN</h2>
             </div>
-            <div class="mission-content">
-                <p id="mission-description" class="mission-description"></p>
-                <div class="mission-objectives">
-                    <h4>📋 Objetivos</h4>
-                    <ul id="mission-objectives-list"></ul>
+            <div class="mission-details">
+                <h3 id="mission-title" class="mission-detail-title">Título de la Misión</h3>
+                <p id="mission-description" class="mission-description">Descripción de la misión</p>
+                
+                <div class="mission-section">
+                    <h4 class="mission-section-title">Objetivos:</h4>
+                    <ul id="mission-objectives-list" class="mission-objectives"></ul>
                 </div>
-                <div class="mission-rewards">
-                    <h4>🎁 Recompensas</h4>
-                    <div id="mission-rewards-text"></div>
+                
+                <div class="mission-section">
+                    <h4 class="mission-section-title">Recompensas:</h4>
+                    <p id="mission-rewards-text" class="mission-rewards"></p>
                 </div>
-            </div>
-            <div class="mission-actions">
-                <button id="accept-mission-btn" class="mission-btn accept">
-                    ✓ Aceptar Misión
-                </button>
-                <button id="decline-mission-btn" class="mission-btn decline">
-                    ✗ Rechazar
-                </button>
+                
+                <div class="mission-actions">
+                    <button id="accept-mission-btn" class="mission-btn accept-btn">Aceptar Misión</button>
+                    <button id="decline-mission-btn" class="mission-btn decline-btn">Rechazar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -203,18 +150,18 @@
     <div id="missions-overlay" class="overlay">
         <div class="missions-container">
             <div class="missions-header">
-                <h2>📋 Registro de Misiones</h2>
+                <h2 class="missions-title">MISIONES</h2>
                 <button id="close-missions-btn" class="close-btn">×</button>
             </div>
             <div class="missions-content">
-                <div class="missions-column">
-                    <h3 class="missions-subtitle">⚡ Misiones Activas</h3>
+                <div class="missions-section">
+                    <h3 class="missions-section-title">Misiones Activas</h3>
                     <ul id="active-missions-list" class="missions-list">
                         <li class="empty-state">No tienes misiones activas</li>
                     </ul>
                 </div>
-                <div class="missions-column">
-                    <h3 class="missions-subtitle">✅ Misiones Completadas</h3>
+                <div class="missions-section">
+                    <h3 class="missions-section-title">Misiones Completadas</h3>
                     <ul id="completed-missions-list" class="missions-list">
                         <li class="empty-state">No has completado misiones</li>
                     </ul>
@@ -226,64 +173,40 @@
     <!-- ========== OVERLAY DE PAUSA ========== -->
     <div id="pause-overlay" class="overlay">
         <div class="pause-container">
-            <h2 class="pause-title">⏸ PAUSA</h2>
-            <div class="pause-menu-buttons">
-                <button id="resume-btn" class="pause-btn">
-                    ▶ Reanudar
-                </button>
-                <button id="save-btn" class="pause-btn">
-                    💾 Guardar Partida
-                </button>
-                <button id="load-btn" class="pause-btn">
-                    📂 Cargar Partida
-                </button>
-                <button id="restart-btn" class="pause-btn">
-                    🔄 Reiniciar Juego
-                </button>
-                <button id="exit-btn" class="pause-btn danger">
-                    🚪 Salir al Menú
-                </button>
+            <h2 class="pause-title">JUEGO PAUSADO</h2>
+            <div class="pause-buttons">
+                <button id="resume-btn" class="pause-btn">Reanudar</button>
+                <button id="save-btn" class="pause-btn">Guardar Partida</button>
+                <button id="load-btn" class="pause-btn">Cargar Partida</button>
+                <button id="restart-btn" class="pause-btn">Reiniciar</button>
+                <button id="exit-btn" class="pause-btn">Salir al Menú</button>
             </div>
         </div>
     </div>
 
-    <!-- ========== CONTENEDOR DE NOTIFICACIONES ========== -->
-    <div id="notification-container"></div>
-
-    <!-- ========== SCRIPTS ========== -->
+    <script src="game.js"></script>
     <script>
         function startNewGame() {
-            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('start-screen').classList.remove('active');
             document.getElementById('game-container').style.display = 'flex';
-            if (typeof initGame === 'function') {
-                initGame();
-            }
+            initGame();
         }
 
-        function loadGameFromMenu() {
+        function continueGame() {
             const saveData = localStorage.getItem('2084_save');
             if (saveData) {
-                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('start-screen').classList.remove('active');
                 document.getElementById('game-container').style.display = 'flex';
-                setTimeout(() => {
-                    if (typeof loadGame === 'function') {
-                        loadGame();
-                    }
-                }, 100);
+                initGame();
+                setTimeout(() => loadGame(), 100);
             } else {
-                alert('❌ No hay partida guardada');
+                alert('No hay partida guardada');
             }
         }
 
         function showCredits() {
-            alert('🎮 2084 - La Resistencia de las Palabras\n\n' +
-                  'Inspirado en "1984" de George Orwell\n\n' +
-                  'Un juego sobre el poder de la lectura y el pensamiento crítico\n' +
-                  'en un mundo controlado por la tecnología.\n\n' +
-                  'Desarrollado con HTML5, CSS3 y JavaScript\n\n' +
-                  '© 2024');
+            alert('2084 - La Resistencia de las Palabras\n\nInspírado en 1984 de George Orwell\nDesarrollado con IA\n\n"La libertad es poder decir que dos más dos son cuatro."');
         }
     </script>
-    <script src="game.js"></script>
 </body>
 </html>

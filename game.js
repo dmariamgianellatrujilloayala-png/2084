@@ -152,6 +152,17 @@ function initGame() {
     setupTouchControls();
     setupUI();
     gameLoop();
+
+    // Cinemática de introducción
+    setTimeout(() => {
+        showCinematic({
+            title: '2084 - Introducción',
+            text: 'En un colegio rural colombiano, el Sistema de Vigilancia Escolar (SVE) controla cada pantalla, cada palabra y cada pensamiento.\n\nPero algunos estudiantes han descubierto que la lectura puede romper el control.',
+            video: 'exterior_school.mp4',
+            autoplay: true,
+            loop: false
+        });
+    }, 500);
 }
 
 // ===========================
@@ -342,6 +353,9 @@ function setupUI() {
     document.getElementById('restart-btn').addEventListener('click', restartGame);
     document.getElementById('exit-btn').addEventListener('click', exitToMenu);
 
+    // Cerrar cinemáticas
+    document.getElementById('close-cinematic-btn').addEventListener('click', closeCinematic);
+
     updateUI();
 }
 
@@ -462,6 +476,14 @@ function interactWithZone(zone) {
 
     switch(zone.name) {
         case 'Biblioteca Antigua':
+            showCinematic({
+                title: 'Biblioteca Antigua',
+                text: 'Un lugar casi olvidado, donde los libros siguen respirando en silencio.',
+                video: 'library_old.mp4',
+                autoplay: true,
+                loop: false
+            });
+
             if (missions.mission1.active && missions.mission1.progress === 0) {
                 missions.mission1.progress = 1;
                 player.mentalFreedom = Math.min(100, player.mentalFreedom + 20);
@@ -475,6 +497,14 @@ function interactWithZone(zone) {
             break;
 
         case 'Sala de Control SVE':
+            showCinematic({
+                title: 'Sala de Control SVE',
+                text: 'Cada movimiento en el colegio está siendo analizado por algoritmos.',
+                video: 'Sistema_SVA2.mp4',
+                autoplay: true,
+                loop: false
+            });
+
             if (missions.mission2.active && missions.mission2.progress === 0) {
                 missions.mission2.progress = 1;
                 player.mentalFreedom = Math.min(100, player.mentalFreedom + 30);
@@ -483,27 +513,60 @@ function interactWithZone(zone) {
                 showNotification('📖 Palabra desbloqueada: VERDAD');
                 updateUI();
             } else {
-                showNotification('💻 Sala de Control SVE: El Gran Hermano te observa');
+                showNotification('💻 Sala de Control SVE: El SVE lo ve todo');
             }
             break;
 
         case 'Salón de Clases':
+            showCinematic({
+                title: 'Salón de Clases',
+                text: 'Todos con los ojos fijos en la pantalla. Nadie hace preguntas.',
+                image: 'classroom_phones.jpg',
+                autoplay: false
+            });
             showNotification('🏫 Salón de Clases: Estudiantes conectados a sus dispositivos');
             break;
 
         case 'Sala de Computadoras':
+            showCinematic({
+                title: 'Sala de Computadoras',
+                text: 'Las máquinas no descansan. Los estudiantes, tampoco.',
+                video: 'computer_room2.mp4',
+                autoplay: true,
+                loop: false
+            });
             showNotification('💾 Sala de Computadoras: Pantallas brillantes, mentes apagadas');
             break;
 
         case 'Patio':
+            showCinematic({
+                title: 'Patio',
+                text: 'Donde antes se escuchaban risas, ahora solo hay notificaciones.',
+                image: 'courtyard_phones.jpg',
+                autoplay: false
+            });
             showNotification('🌳 Patio: Todos miran sus teléfonos en silencio');
             break;
 
         case 'Baño (Resistencia)':
+            showCinematic({
+                title: 'Baño - Punto de Resistencia',
+                text: 'Aquí las paredes hablan más que las pantallas.',
+                video: 'bathroom_resistance.mp4',
+                autoplay: true,
+                loop: false
+            });
             showNotification('🚪 Baño: Grafitis de resistencia en las paredes');
             break;
 
         case 'Exterior del Colegio':
+            showCinematic({
+                title: 'Exterior del Colegio',
+                text: 'Desde afuera parece una escuela normal. Desde adentro, es otra cosa.',
+                video: 'exterior_school.mp4',
+                autoplay: true,
+                loop: false
+            });
             showNotification('🏛️ Exterior: El colegio rural bajo vigilancia constante');
             break;
 
@@ -521,6 +584,33 @@ let currentMissionOffer = null;
 
 function showDialogue(npc) {
     currentNPC = npc;
+
+    // Cinemáticas según NPC
+    if (npc.name === 'Julia') {
+        showCinematic({
+            title: 'Julia',
+            text: 'Julia ha empezado a cuestionar lo que le muestran las pantallas del SVE.',
+            video: 'winston_girl2.mp4',
+            autoplay: true,
+            loop: false
+        });
+    } else if (npc.name === "O'Brien") {
+        showCinematic({
+            title: 'O\'Brien',
+            text: 'O\'Brien parece formar parte del sistema... pero sus palabras insinúan algo más.',
+            video: 'obrien_teacher2.mp4',
+            autoplay: true,
+            loop: false
+        });
+    } else if (npc.name === 'Miembro de la Resistencia') {
+        showCinematic({
+            title: 'Resistencia',
+            text: 'En los lugares más inesperados, la resistencia deja señales para quienes todavía quieren pensar.',
+            video: 'bathroom_resistance.mp4',
+            autoplay: true,
+            loop: false
+        });
+    }
     
     document.getElementById('npc-name').textContent = npc.name;
     document.getElementById('dialogue-text').textContent = npc.dialogue;
@@ -713,6 +803,75 @@ function exitToMenu() {
         isPaused = false;
         document.getElementById('pause-overlay').classList.remove('active');
     }
+}
+
+// ===========================
+// CINEMÁTICAS (VIDEOS / IMÁGENES)
+// ===========================
+
+let wasPausedByCinematic = false;
+
+function showCinematic({ 
+    title = '2084', 
+    text = '', 
+    image = null, 
+    video = null, 
+    autoplay = true, 
+    loop = false 
+}) {
+    const overlay = document.getElementById('cinematic-overlay');
+    const titleEl = document.getElementById('cinematic-title');
+    const textEl = document.getElementById('cinematic-text');
+    const imgEl = document.getElementById('cinematic-image');
+    const videoEl = document.getElementById('cinematic-video');
+
+    // Pausar juego si estaba corriendo
+    if (!isPaused) {
+        wasPausedByCinematic = true;
+        isPaused = true;
+    } else {
+        wasPausedByCinematic = false;
+    }
+
+    // Configurar contenido
+    titleEl.textContent = title;
+    textEl.textContent = text || '';
+
+    imgEl.style.display = 'none';
+    videoEl.style.display = 'none';
+    videoEl.pause();
+    videoEl.src = '';
+
+    if (video) {
+        videoEl.src = video;
+        videoEl.style.display = 'block';
+        videoEl.loop = loop;
+        if (autoplay) {
+            videoEl.play().catch(err => console.warn('No se pudo reproducir el video automáticamente:', err));
+        }
+    } else if (image) {
+        imgEl.src = image;
+        imgEl.style.display = 'block';
+    }
+
+    overlay.classList.add('active');
+    console.log(`🎬 Cinemática mostrada: ${title}`);
+}
+
+function closeCinematic() {
+    const overlay = document.getElementById('cinematic-overlay');
+    const videoEl = document.getElementById('cinematic-video');
+    
+    overlay.classList.remove('active');
+    videoEl.pause();
+    videoEl.src = '';
+
+    if (wasPausedByCinematic) {
+        isPaused = false;
+        wasPausedByCinematic = false;
+    }
+
+    console.log('🎬 Cinemática cerrada');
 }
 
 // ===========================
