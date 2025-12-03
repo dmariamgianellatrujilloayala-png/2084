@@ -44,7 +44,15 @@ const player = {
 };
 
 // ========== CONTROLES ==========
-const keys = {};
+const keys = {
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    interact: false,
+    missions: false,
+    pause: false
+};
 
 // Prevenir scroll con flechas
 window.addEventListener('keydown', (e) => {
@@ -73,7 +81,152 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
     keys[e.code] = false;
 });
+function setupTouchControls() {
+    const btnUp = document.getElementById('btn-up');
+    const btnDown = document.getElementById('btn-down');
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnInteract = document.getElementById('btn-interact');
+    const btnMissions = document.getElementById('btn-missions');
+    const btnPause = document.getElementById('btn-pause');
 
+    if (!btnUp) {
+        console.warn('Controles táctiles no encontrados, se omite configuración táctil.');
+        return;
+    }
+
+    // Helpers para manejar presión contínua
+    function bindDirectionalButton(button, keyName) {
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            keys[keyName] = true;
+        }, { passive: false });
+
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        }, { passive: false });
+
+        button.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        }, { passive: false });
+    }
+
+    bindDirectionalButton(btnUp, 'up');
+    bindDirectionalButton(btnDown, 'down');
+    bindDirectionalButton(btnLeft, 'left');
+    bindDirectionalButton(btnRight, 'right');
+
+    // Botón de interactuar (como ESPACIO/E)
+    btnInteract.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys.interact = true;
+        // Si tu lógica usa una función específica para interactuar:
+        if (typeof handleInteraction === 'function') {
+            handleInteraction();
+        }
+        setTimeout(() => {
+            keys.interact = false;
+        }, 150);
+    }, { passive: false });
+
+    // Botón de misiones (como tecla M)
+    btnMissions.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys.missions = true;
+        if (typeof toggleMissionsOverlay === 'function') {
+            toggleMissionsOverlay();
+        }
+        setTimeout(() => {
+            keys.missions = false;
+        }, 150);
+    }, { passive: false });
+
+    // Botón de pausa (como ESC)
+    btnPause.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys.pause = true;
+        if (typeof togglePause === 'function') {
+            togglePause();
+        }
+        setTimeout(() => {
+            keys.pause = false;
+        }, 150);
+    }, { passive: false });
+}
+function setupTouchControls() {
+    const btnUp = document.getElementById('btn-up');
+    const btnDown = document.getElementById('btn-down');
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnInteract = document.getElementById('btn-interact');
+    const btnMissions = document.getElementById('btn-missions');
+    const btnPause = document.getElementById('btn-pause');
+
+    if (!btnUp) {
+        console.warn('Controles táctiles no encontrados, se omite configuración táctil.');
+        return;
+    }
+
+    function bindDirectionalButton(button, keyName) {
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            keys[keyName] = true;
+        }, { passive: false });
+
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        }, { passive: false });
+
+        button.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        }, { passive: false });
+    }
+
+    bindDirectionalButton(btnUp, 'up');
+    bindDirectionalButton(btnDown, 'down');
+    bindDirectionalButton(btnLeft, 'left');
+    bindDirectionalButton(btnRight, 'right');
+
+    // Interactuar (como ESPACIO/E)
+    btnInteract.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys.interact = true;
+        if (typeof handleInteraction === 'function') {
+            handleInteraction();
+        }
+        setTimeout(() => {
+            keys.interact = false;
+        }, 150);
+    }, { passive: false });
+
+    // Misiones (como tecla M)
+    btnMissions.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys.missions = true;
+        if (typeof toggleMissionsOverlay === 'function') {
+            toggleMissionsOverlay();
+        }
+        setTimeout(() => {
+            keys.missions = false;
+        }, 150);
+    }, { passive: false });
+
+    // Pausa (como ESC)
+    btnPause.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys.pause = true;
+        if (typeof togglePause === 'function') {
+            togglePause();
+        }
+        setTimeout(() => {
+            keys.pause = false;
+        }, 150);
+    }, { passive: false });
+}
 // ========== MAPAS ==========
 const maps = {
     school: {
@@ -292,6 +445,12 @@ const ctx = canvas.getContext('2d');
 canvas.width = CONFIG.canvasWidth;
 canvas.height = CONFIG.canvasHeight;
 
+window.addEventListener('load', () => {
+    if (typeof initGame === 'function') {
+        initGame();
+    }
+    setupTouchControls();
+});
 // Minimapa
 const minimap = document.getElementById('minimap');
 const minimapCtx = minimap.getContext('2d');

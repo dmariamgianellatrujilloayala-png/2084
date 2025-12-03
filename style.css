@@ -1524,3 +1524,94 @@ body::before {
         width: 95vw;
     }
 }
+/* ===========================
+   CONTROLES TÁCTILES (MÓVIL)
+   =========================== */
+
+.touch-controls {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 900px;
+    display: none; /* Por defecto oculto en escritorio */
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    box-sizing: border-box;
+    pointer-events: none; /* Solo los botones reciben toques */
+    z-index: 50;
+}
+
+.touch-left,
+.touch-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+.touch-middle-row {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.touch-btn {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 255, 204, 0.4);
+    background: radial-gradient(circle at 30% 30%, rgba(0, 255, 204, 0.35), rgba(5, 15, 25, 0.95));
+    color: #e5f8ff;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+        0 0 12px rgba(0, 255, 204, 0.3),
+        0 0 32px rgba(0, 180, 255, 0.2);
+    text-shadow: 0 0 6px rgba(0, 255, 204, 0.9);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    pointer-events: auto; /* Los botones sí reciben toques */
+    touch-action: none;
+}
+
+.touch-btn:active {
+    transform: scale(0.9);
+    box-shadow:
+        0 0 18px rgba(0, 255, 204, 0.6),
+        0 0 38px rgba(0, 180, 255, 0.4);
+    border-color: rgba(0, 255, 204, 0.9);
+}
+
+.touch-btn.action {
+    background: radial-gradient(circle at 30% 30%, rgba(255, 193, 7, 0.4), rgba(25, 10, 5, 0.95));
+    border-color: rgba(255, 193, 7, 0.6);
+    box-shadow:
+        0 0 14px rgba(255, 193, 7, 0.5),
+        0 0 30px rgba(255, 87, 34, 0.4);
+}
+
+/* Mostrar controles táctiles solo en pantallas pequeñas (móvil/tablet) */
+@media (max-width: 900px) {
+    #game-container {
+        flex-direction: column;
+    }
+
+    #side-panel {
+        order: 3;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .canvas-container {
+        order: 1;
+    }
+
+    .touch-controls {
+        display: flex;
+    }
+}

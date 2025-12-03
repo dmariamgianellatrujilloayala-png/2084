@@ -54,14 +54,35 @@
         </header>
 
         <!-- ÁREA DE JUEGO -->
-        <div id="game-area">
-            <!-- CANVAS PRINCIPAL -->
-            <div class="canvas-container">
-                <canvas id="game-canvas"></canvas>
-                <div class="vignette"></div>
+      <div id="game-area">
+    <!-- CANVAS PRINCIPAL -->
+    <div class="canvas-container">
+        <canvas id="game-canvas"></canvas>
+        <div class="vignette"></div>
+    </div>
+
+    <!-- CONTROLES TÁCTILES -->
+    <div id="touch-controls" class="touch-controls">
+        <div class="touch-left">
+            <button class="touch-btn" id="btn-up">▲</button>
+            <div class="touch-middle-row">
+                <button class="touch-btn" id="btn-left">◀</button>
+                <button class="touch-btn" id="btn-down">▼</button>
+                <button class="touch-btn" id="btn-right">▶</button>
             </div>
-            <!-- PANEL LATERAL -->
-            <aside id="side-panel">
+        </div>
+        <div class="touch-right">
+            <button class="touch-btn action" id="btn-interact">⚡</button>
+            <button class="touch-btn action" id="btn-missions">📋</button>
+            <button class="touch-btn action" id="btn-pause">⏸</button>
+        </div>
+    </div>
+
+    <!-- PANEL LATERAL -->
+    <aside id="side-panel">
+        ...
+    </aside>
+</div>
                 <!-- MINIMAPA -->
                 <section class="panel-section">
                     <h3 class="panel-title">
