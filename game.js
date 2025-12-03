@@ -16,6 +16,7 @@ const minimapCtx = minimap.getContext('2d');
 
 let gameRunning = false;
 let isPaused = false;
+let animationFrame = 0;
 
 const keys = {
     up: false,
@@ -26,6 +27,140 @@ const keys = {
     missions: false,
     pause: false
 };
+
+// ===========================
+// SISTEMA DE SPRITES
+// ===========================
+
+class Sprite {
+    constructor(x, y, width, height, color, type = 'player') {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color;
+        this.type = type;
+        this.frame = 0;
+        this.animationSpeed = 0.15;
+        this.direction = 'down'; // up, down, left, right
+    }
+
+    draw(ctx) {
+        if (this.type === 'player') {
+            this.drawPlayer(ctx);
+        } else if (this.type === 'npc') {
+            this.drawNPC(ctx);
+        } else if (this.type === 'drone') {
+            this.drawDrone(ctx);
+        }
+    }
+
+    drawPlayer(ctx) {
+        // Cuerpo
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x + 8, this.y + 5, 14, 20);
+        
+        // Cabeza
+        ctx.fillStyle = '#ffcc99';
+        ctx.beginPath();
+        ctx.arc(this.x + 15, this.y + 8, 6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Piernas animadas
+        const legOffset = Math.sin(this.frame) * 3;
+        ctx.fillStyle = '#1a4d7a';
+        
+        // Pierna izquierda
+        ctx.fillRect(this.x + 9, this.y + 25, 4, 5 + legOffset);
+        
+        // Pierna derecha
+        ctx.fillRect(this.x + 17, this.y + 25, 4, 5 - legOffset);
+        
+        // Brazos
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x + 5, this.y + 10, 3, 8);
+        ctx.fillRect(this.x + 22, this.y + 10, 3, 8);
+        
+        // Contorno
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.x + 8, this.y + 5, 14, 20);
+    }
+
+    drawNPC(ctx) {
+        // Cuerpo
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x + 6, this.y + 4, 13, 17);
+        
+        // Cabeza
+        ctx.fillStyle = '#ffcc99';
+        ctx.beginPath();
+        ctx.arc(this.x + 12.5, this.y + 7, 5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Piernas
+        ctx.fillStyle = '#333';
+        ctx.fillRect(this.x + 8, this.y + 21, 3, 4);
+        ctx.fillRect(this.x + 14, this.y + 21, 3, 4);
+        
+        // Contorno
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.x + 6, this.y + 4, 13, 17);
+    }
+
+    drawDrone(ctx) {
+        // Cuerpo del dron (rombo)
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.moveTo(this.x + 10, this.y);
+        ctx.lineTo(this.x + 20, this.y + 10);
+        ctx.lineTo(this.x + 10, this.y + 20);
+        ctx.lineTo(this.x, this.y + 10);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Ojo central (animado)
+        const eyeSize = 3 + Math.sin(this.frame * 2) * 1;
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(this.x + 10, this.y + 10, eyeSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Hélices (rotando)
+        const rotation = this.frame * 0.5;
+        ctx.strokeStyle = '#ff4757';
+        ctx.lineWidth = 2;
+        
+        for (let i = 0; i < 4; i++) {
+            const angle = (Math.PI / 2) * i + rotation;
+            const x1 = this.x + 10 + Math.cos(angle) * 8;
+            const y1 = this.y + 10 + Math.sin(angle) * 8;
+            const x2 = this.x + 10 + Math.cos(angle) * 12;
+            const y2 = this.y + 10 + Math.sin(angle) * 12;
+            
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        
+        // Círculo de detección
+        ctx.strokeStyle = 'rgba(255, 71, 87, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(this.x + 10, this.y + 10, 40, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    updateAnimation(isMoving = false) {
+        if (isMoving) {
+            this.frame += this.animationSpeed;
+        } else {
+            this.frame = 0;
+        }
+    }
+}
 
 // ===========================
 // JUGADOR
@@ -39,8 +174,12 @@ const player = {
     speed: 3,
     color: '#00ffcc',
     mentalFreedom: 50,
-    unlockedWords: []
+    unlockedWords: [],
+    sprite: null,
+    isMoving: false
 };
+
+player.sprite = new Sprite(player.x, player.y, player.width, player.height, player.color, 'player');
 
 // ===========================
 // ZONAS DEL MAPA
@@ -70,7 +209,8 @@ const npcs = [
         color: '#ff6b9d',
         dialogue: 'Winston... he encontrado algo. Palabras prohibidas escondidas en la biblioteca antigua.',
         hasMission: true,
-        missionId: 'mission1'
+        missionId: 'mission1',
+        sprite: null
     },
     { 
         name: 'O\'Brien', 
@@ -81,7 +221,8 @@ const npcs = [
         color: '#ff4757',
         dialogue: 'El Sistema SVE lo ve todo. Pero hay formas de engañarlo... si sabes cómo.',
         hasMission: true,
-        missionId: 'mission2'
+        missionId: 'mission2',
+        sprite: null
     },
     { 
         name: 'Miembro de la Resistencia', 
@@ -91,9 +232,15 @@ const npcs = [
         height: 25, 
         color: '#2ed573',
         dialogue: 'Nos reunimos aquí en secreto. Las palabras son nuestra arma contra el control.',
-        hasMission: false
+        hasMission: false,
+        sprite: null
     }
 ];
+
+// Inicializar sprites de NPCs
+npcs.forEach(npc => {
+    npc.sprite = new Sprite(npc.x, npc.y, npc.width, npc.height, npc.color, 'npc');
+});
 
 // ===========================
 // SISTEMA DE MISIONES
@@ -134,12 +281,33 @@ let activeMissions = [];
 let completedMissions = [];
 
 // ===========================
-// ENEMIGOS/DRONES
+// ENEMIGOS/DRONES (MEJORADO - 6 DRONES)
 // ===========================
 
 const drones = [
-    { x: 650, y: 350, width: 20, height: 20, speed: 1, direction: 1, patrolStart: 550, patrolEnd: 750, axis: 'x' }
+    // Dron 1: Patrulla horizontal en Sala de Computadoras
+    { x: 350, y: 100, width: 20, height: 20, speed: 1.5, direction: 1, patrolStart: 310, patrolEnd: 490, axis: 'x', sprite: null },
+    
+    // Dron 2: Patrulla vertical en Patio
+    { x: 650, y: 80, width: 20, height: 20, speed: 1.2, direction: 1, patrolStart: 60, patrolEnd: 190, axis: 'y', sprite: null },
+    
+    // Dron 3: Patrulla horizontal en Biblioteca
+    { x: 320, y: 320, width: 20, height: 20, speed: 1, direction: 1, patrolStart: 310, patrolEnd: 490, axis: 'x', sprite: null },
+    
+    // Dron 4: Patrulla vertical en Sala de Control SVE
+    { x: 650, y: 280, width: 20, height: 20, speed: 1.8, direction: 1, patrolStart: 260, patrolEnd: 540, axis: 'y', sprite: null },
+    
+    // Dron 5: Patrulla horizontal en Exterior
+    { x: 100, y: 480, width: 20, height: 20, speed: 1.3, direction: 1, patrolStart: 60, patrolEnd: 480, axis: 'x', sprite: null },
+    
+    // Dron 6: Patrulla vertical en Salón de Clases
+    { x: 150, y: 80, width: 20, height: 20, speed: 1.4, direction: 1, patrolStart: 60, patrolEnd: 190, axis: 'y', sprite: null }
 ];
+
+// Inicializar sprites de drones
+drones.forEach(drone => {
+    drone.sprite = new Sprite(drone.x, drone.y, drone.width, drone.height, '#ff4757', 'drone');
+});
 
 // ===========================
 // INICIALIZACIÓN
@@ -213,7 +381,7 @@ function setupControls() {
 }
 
 // ===========================
-// CONTROLES TÁCTILES
+// CONTROLES TÁCTILES (MEJORADO)
 // ===========================
 
 function setupTouchControls() {
@@ -232,6 +400,22 @@ function setupTouchControls() {
 
     console.log('📱 Configurando controles táctiles...');
 
+    // Prevenir zoom en doble tap
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+            e.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
+
     // Función para vincular botones direccionales
     function bindDirectionalButton(button, keyName) {
         // Touch events
@@ -239,6 +423,7 @@ function setupTouchControls() {
             e.preventDefault();
             e.stopPropagation();
             keys[keyName] = true;
+            button.style.transform = 'scale(0.9)';
             console.log(`🎮 Touch: ${keyName} = true`);
         }, { passive: false });
 
@@ -246,6 +431,7 @@ function setupTouchControls() {
             e.preventDefault();
             e.stopPropagation();
             keys[keyName] = false;
+            button.style.transform = 'scale(1)';
             console.log(`🎮 Touch: ${keyName} = false`);
         }, { passive: false });
 
@@ -253,23 +439,27 @@ function setupTouchControls() {
             e.preventDefault();
             e.stopPropagation();
             keys[keyName] = false;
+            button.style.transform = 'scale(1)';
         }, { passive: false });
 
         // Mouse events (para probar en PC)
         button.addEventListener('mousedown', (e) => {
             e.preventDefault();
             keys[keyName] = true;
+            button.style.transform = 'scale(0.9)';
             console.log(`🖱️ Mouse: ${keyName} = true`);
         });
 
         button.addEventListener('mouseup', (e) => {
             e.preventDefault();
             keys[keyName] = false;
+            button.style.transform = 'scale(1)';
             console.log(`🖱️ Mouse: ${keyName} = false`);
         });
 
         button.addEventListener('mouseleave', (e) => {
             keys[keyName] = false;
+            button.style.transform = 'scale(1)';
         });
     }
 
@@ -284,9 +474,13 @@ function setupTouchControls() {
         e.preventDefault();
         e.stopPropagation();
         console.log('⚡ Botón interactuar presionado (touch)');
+        btnInteract.style.transform = 'scale(0.9)';
         keys.interact = true;
         checkInteractions();
-        setTimeout(() => { keys.interact = false; }, 200);
+        setTimeout(() => { 
+            keys.interact = false;
+            btnInteract.style.transform = 'scale(1)';
+        }, 200);
     }, { passive: false });
 
     btnInteract.addEventListener('click', (e) => {
@@ -302,7 +496,9 @@ function setupTouchControls() {
         e.preventDefault();
         e.stopPropagation();
         console.log('📋 Botón misiones presionado (touch)');
+        btnMissions.style.transform = 'scale(0.9)';
         toggleMissionsOverlay();
+        setTimeout(() => { btnMissions.style.transform = 'scale(1)'; }, 200);
     }, { passive: false });
 
     btnMissions.addEventListener('click', (e) => {
@@ -316,7 +512,9 @@ function setupTouchControls() {
         e.preventDefault();
         e.stopPropagation();
         console.log('⏸ Botón pausa presionado (touch)');
+        btnPause.style.transform = 'scale(0.9)';
         togglePause();
+        setTimeout(() => { btnPause.style.transform = 'scale(1)'; }, 200);
     }, { passive: false });
 
     btnPause.addEventListener('click', (e) => {
@@ -333,27 +531,16 @@ function setupTouchControls() {
 // ===========================
 
 function setupUI() {
-    // Botón de misiones en el panel
     document.getElementById('show-missions-btn').addEventListener('click', toggleMissionsOverlay);
-
-    // Cerrar diálogo
     document.getElementById('close-dialogue-btn').addEventListener('click', closeDialogue);
-
-    // Cerrar panel de misiones
     document.getElementById('close-missions-btn').addEventListener('click', toggleMissionsOverlay);
-
-    // Botones de misión
     document.getElementById('accept-mission-btn').addEventListener('click', acceptMission);
     document.getElementById('decline-mission-btn').addEventListener('click', declineMission);
-
-    // Botones de pausa
     document.getElementById('resume-btn').addEventListener('click', togglePause);
     document.getElementById('save-btn').addEventListener('click', saveGame);
     document.getElementById('load-btn').addEventListener('click', loadGame);
     document.getElementById('restart-btn').addEventListener('click', restartGame);
     document.getElementById('exit-btn').addEventListener('click', exitToMenu);
-
-    // Cerrar cinemáticas
     document.getElementById('close-cinematic-btn').addEventListener('click', closeCinematic);
 
     updateUI();
@@ -370,6 +557,7 @@ function gameLoop() {
         update();
         draw();
         drawMinimap();
+        animationFrame++;
     }
 
     requestAnimationFrame(gameLoop);
@@ -387,21 +575,27 @@ function update() {
 
 function updatePlayer() {
     let moving = false;
+    const oldX = player.x;
+    const oldY = player.y;
 
     if (keys.up) {
         player.y -= player.speed;
+        player.sprite.direction = 'up';
         moving = true;
     }
     if (keys.down) {
         player.y += player.speed;
+        player.sprite.direction = 'down';
         moving = true;
     }
     if (keys.left) {
         player.x -= player.speed;
+        player.sprite.direction = 'left';
         moving = true;
     }
     if (keys.right) {
         player.x += player.speed;
+        player.sprite.direction = 'right';
         moving = true;
     }
 
@@ -409,10 +603,11 @@ function updatePlayer() {
     player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
     player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
 
-    // Debug de movimiento
-    if (moving) {
-        console.log(`🏃 Jugador moviéndose: x=${Math.round(player.x)}, y=${Math.round(player.y)}`);
-    }
+    // Actualizar posición del sprite
+    player.sprite.x = player.x;
+    player.sprite.y = player.y;
+    player.sprite.updateAnimation(moving);
+    player.isMoving = moving;
 }
 
 function updateDrones() {
@@ -429,11 +624,23 @@ function updateDrones() {
             }
         }
 
+        // Actualizar sprite
+        drone.sprite.x = drone.x;
+        drone.sprite.y = drone.y;
+        drone.sprite.frame = animationFrame * 0.1;
+
         // Detectar colisión con jugador
         if (checkCollision(player, drone)) {
             player.mentalFreedom = Math.max(0, player.mentalFreedom - 5);
             showNotification('⚠️ ¡Detectado por un dron! -5 Libertad Mental');
             updateUI();
+            
+            // Empujar al jugador
+            if (drone.axis === 'x') {
+                player.y += drone.direction * 20;
+            } else {
+                player.x += drone.direction * 20;
+            }
         }
     });
 }
@@ -974,10 +1181,9 @@ function draw() {
         ctx.fillText(zone.name, zone.x + zone.width / 2, zone.y + zone.height / 2);
     });
     
-    // Dibujar NPCs
+    // Dibujar NPCs con sprites
     npcs.forEach(npc => {
-        ctx.fillStyle = npc.color;
-        ctx.fillRect(npc.x, npc.y, npc.width, npc.height);
+        npc.sprite.draw(ctx);
         
         ctx.fillStyle = '#fff';
         ctx.font = '10px Rajdhani';
@@ -995,25 +1201,13 @@ function draw() {
         }
     });
     
-    // Dibujar drones
+    // Dibujar drones con sprites
     drones.forEach(drone => {
-        ctx.fillStyle = '#ff4757';
-        ctx.fillRect(drone.x, drone.y, drone.width, drone.height);
-        
-        ctx.strokeStyle = '#ff4757';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(drone.x + drone.width / 2, drone.y + drone.height / 2, 40, 0, Math.PI * 2);
-        ctx.stroke();
+        drone.sprite.draw(ctx);
     });
     
-    // Dibujar jugador
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-    
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(player.x, player.y, player.width, player.height);
+    // Dibujar jugador con sprite
+    player.sprite.draw(ctx);
     
     // Indicador de interacción
     let canInteract = false;
