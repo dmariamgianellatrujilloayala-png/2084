@@ -22,9 +22,16 @@ const sounds = {
 };
 
 // Configurar volúmenes
-sounds.ambient.volume = 0.2;
-sounds.interact.volume = 0.4;
-sounds.footstep.volume = 0.3;
+if (sounds.ambient) sounds.ambient.volume = 0.2;
+if (sounds.interact) sounds.interact.volume = 0.4;
+if (sounds.footstep) sounds.footstep.volume = 0.3;
+
+// Variable para controlar inicio de música
+let ambientStarted = false;
+
+// ========== AVATAR DEL JUGADOR ==========
+const playerSprite = new Image();
+playerSprite.src = 'images/winston_student.jpg'; // Cambia si quieres otro avatar
 
 // ========== JUGADOR ==========
 const player = {
@@ -43,6 +50,12 @@ const player = {
 const keys = {};
 
 window.addEventListener('keydown', (e) => {
+    // Iniciar música la primera vez que se presione una tecla
+    if (!ambientStarted) {
+        playSound('ambient');
+        ambientStarted = true;
+    }
+
     keys[e.key.toLowerCase()] = true;
     
     // Prevenir scroll
@@ -253,7 +266,6 @@ function nextTutorialStep() {
         gameState.inTutorial = false;
         gameState.currentWaypoint = { x: 500, y: 200 }; // Apuntar a Julia
         showNotification('Misión Actual', 'Busca a otros estudiantes que piensen diferente. Habla con Julia.');
-        playSound('ambient');
     } else {
         // Mostrar siguiente paso
         document.getElementById('tutorial-text').textContent = tutorialSteps[currentTutorialStep].text;
@@ -419,9 +431,15 @@ function showDialogue(npc) {
         dialogueImage.src = npc.image;
         dialogueImage.style.display = 'block';
         dialogueImage.onerror = function() {
-            console.log('Error cargando imagen:', npc.image);
+            console.log('⚠️ Error cargando imagen:', npc.image);
+            console.log('Verifica que el archivo existe en la carpeta images/');
             this.style.display = 'none';
         };
+        dialogueImage.onload = function() {
+            console.log('✅ Imagen cargada correctamente:', npc.image);
+        };
+    } else {
+        if (dialogueImage) dialogueImage.style.display = 'none';
     }
     
     dialogueName.textContent = npc.name;
@@ -607,10 +625,12 @@ function updateWaypoint() {
     
     // Rotar flecha (simplificado - siempre apunta a la derecha si el objetivo está a la derecha)
     const arrow = document.querySelector('.waypoint-arrow');
-    if (dx > 0) {
-        arrow.style.transform = 'rotate(0deg)';
-    } else {
-        arrow.style.transform = 'rotate(180deg)';
+    if (arrow) {
+        if (dx > 0) {
+            arrow.style.transform = 'rotate(0deg)';
+        } else {
+            arrow.style.transform = 'rotate(180deg)';
+        }
     }
 }
 
@@ -618,7 +638,12 @@ function updateWaypoint() {
 function playSound(soundName) {
     if (sounds[soundName]) {
         sounds[soundName].currentTime = 0;
-        sounds[soundName].play().catch(e => console.log('Audio error:', e));
+        sounds[soundName].play().catch(e => {
+            // Silenciar errores de audio si no hay archivos
+            if (e.name !== 'NotSupportedError') {
+                console.log('Audio no disponible:', soundName);
+            }
+        });
     }
 }
 
@@ -730,9 +755,20 @@ function draw() {
         ctx.fill();
     });
     
-    // Dibujar jugador
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    // Dibujar jugador (AVATAR CON IMAGEN)
+    if (playerSprite.complete && playerSprite.naturalWidth > 0) {
+        ctx.drawImage(
+            playerSprite,
+            player.x,
+            player.y,
+            player.width,
+            player.height
+        );
+    } else {
+        // Mientras carga la imagen, dibujar el cubo
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
     
     // Indicador de interacción en zonas
     zones.forEach(zone => {
@@ -750,6 +786,8 @@ function draw() {
 // ========== MINIMAPA ==========
 function drawMinimap() {
     const minimapCanvas = document.getElementById('minimap-canvas');
+    if (!minimapCanvas) return;
+    
     const mCtx = minimapCanvas.getContext('2d');
     const scale = 0.15;
     
@@ -781,6 +819,31 @@ function gameLoop() {
     updateWaypoint();
     draw();
     requestAnimationFrame(gameLoop);
+}
+// ========== REINICIAR JUEGO ==========
+const restartBtn = document.getElementById('restart-button');
+if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+        // Reset de estado del jugador
+        player.x = 400;
+        player.y = 300;
+        player.mentalFreedom = 50;
+        player.unlockedWords = [];
+        player.currentMission = 'Explora la escuela y habla con otros estudiantes';
+        
+        // Reset de diálogos NPC
+        npcs.forEach(npc => {
+            npc.met = false;
+            npc.dialogueIndex = 0;
+        });
+        
+        // Quitar waypoints
+        gameState.currentWaypoint = { x: 500, y: 200 }; // de nuevo hacia Julia
+        
+        // Actualizar HUD
+        updateHUD();
+        showNotification('Juego reiniciado', 'Tu progreso se ha reiniciado. Vuelve a empezar la misión.');
+    });
 }
 
 // ========== INICIAR JUEGO ==========
