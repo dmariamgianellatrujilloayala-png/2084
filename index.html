@@ -68,6 +68,165 @@
             </div>
         </div>
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2084</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Pantalla de inicio -->
+    <div id="start-screen">
+        <div class="start-content">
+            <h1 class="glitch" data-text="2084">2084</h1>
+            <p class="subtitle">La Resistencia de las Palabras</p>
+            <button id="new-game-btn" class="btn-primary">Nuevo Juego</button>
+            <button id="continue-game-btn" class="btn-secondary">Continuar</button>
+            <button id="credits-btn" class="btn-secondary">Créditos</button>
+        </div>
+    </div>
+
+    <!-- Contenedor del juego -->
+    <div id="game-container" style="display: none;">
+        <!-- Canvas principal -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- HUD -->
+        <div id="hud">
+            <!-- Libertad Mental -->
+            <div class="hud-item">
+                <div class="hud-label">Libertad Mental</div>
+                <div class="progress-bar">
+                    <div id="mental-freedom-fill" class="progress-fill"></div>
+                    <span id="mental-freedom-value" class="progress-text">50</span>
+                </div>
+            </div>
+
+            <!-- Palabras Desbloqueadas -->
+            <div class="hud-item">
+                <div class="hud-label">Palabras Desbloqueadas</div>
+                <div id="words-count" class="hud-value">0/10</div>
+            </div>
+
+            <!-- Misión Actual -->
+            <div class="hud-item">
+                <div class="hud-label">Misión Actual</div>
+                <div id="current-mission-name" class="hud-value">Explora el colegio</div>
+            </div>
+
+            <!-- Minimapa -->
+            <div class="hud-item">
+                <div class="hud-label">Mapa</div>
+                <canvas id="minimap" width="150" height="112"></canvas>
+            </div>
+
+            <!-- NUEVO: Control de Audio -->
+            <div class="hud-item audio-controls">
+                <div class="hud-label">Audio</div>
+                <button id="toggle-audio-btn" class="audio-btn">🔊</button>
+                <div class="volume-controls">
+                    <label>Música: <span id="music-volume-value">50</span>%</label>
+                    <input type="range" id="music-volume" min="0" max="100" value="50">
+                    <label>Efectos: <span id="sfx-volume-value">70</span>%</label>
+                    <input type="range" id="sfx-volume" min="0" max="100" value="70">
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventario de Palabras -->
+        <div id="words-panel">
+            <h3>Palabras Desbloqueadas</h3>
+            <ul id="words-list">
+                <li class="empty-state">No has desbloqueado palabras</li>
+            </ul>
+        </div>
+
+        <!-- Botón de Misiones -->
+        <button id="show-missions-btn" class="floating-btn">📋 Misiones</button>
+
+        <!-- Indicador de Interacción -->
+        <div id="interaction-indicator">
+            <span>Presiona ESPACIO o E para interactuar</span>
+        </div>
+
+        <!-- Controles Táctiles -->
+        <div id="touch-controls">
+            <div class="dpad">
+                <button id="btn-up" class="dpad-btn dpad-up">▲</button>
+                <button id="btn-down" class="dpad-btn dpad-down">▼</button>
+                <button id="btn-left" class="dpad-btn dpad-left">◀</button>
+                <button id="btn-right" class="dpad-btn dpad-right">▶</button>
+            </div>
+            <div class="action-buttons">
+                <button id="btn-interact" class="action-btn">💬</button>
+                <button id="btn-missions" class="action-btn">📋</button>
+                <button id="btn-pause" class="action-btn">⏸</button>
+            </div>
+        </div>
+
+        <!-- Notificaciones -->
+        <div id="notification-container"></div>
+    </div>
+
+    <!-- Overlay de Diálogo -->
+    <div id="dialogue-overlay" class="overlay">
+        <div class="dialogue-box">
+            <h2 id="npc-name">NPC</h2>
+            <p id="dialogue-text">Texto del diálogo...</p>
+            <div id="dialogue-choices"></div>
+            <button id="close-dialogue-btn" class="btn-secondary">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Overlay de Misiones -->
+    <div id="missions-overlay" class="overlay">
+        <div class="missions-panel">
+            <h2>Misiones</h2>
+            <div class="missions-content">
+                <div class="missions-section">
+                    <h3>Activas</h3>
+                    <ul id="active-missions-list"></ul>
+                </div>
+                <div class="missions-section">
+                    <h3>Completadas</h3>
+                    <ul id="completed-missions-list"></ul>
+                </div>
+            </div>
+            <button id="close-missions-btn" class="btn-primary">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Overlay de Pausa -->
+    <div id="pause-overlay" class="overlay">
+        <div class="pause-menu">
+            <h2>Pausa</h2>
+            <button id="resume-btn" class="btn-primary">Reanudar</button>
+            <button id="save-btn" class="btn-secondary">Guardar Partida</button>
+            <button id="load-btn" class="btn-secondary">Cargar Partida</button>
+            <button id="restart-btn" class="btn-secondary">Reiniciar</button>
+            <button id="exit-btn" class="btn-secondary">Salir al Menú</button>
+        </div>
+    </div>
+
+    <!-- Overlay de Cinemáticas -->
+    <div id="cinematic-overlay" class="overlay">
+        <div class="cinematic-box">
+            <h2 id="cinematic-title">Título</h2>
+            <div class="cinematic-media">
+                <img id="cinematic-image" src="" alt="Cinemática">
+                <video id="cinematic-video" src="" controls></video>
+            </div>
+            <p id="cinematic-text">Texto de la cinemática...</p>
+            <button id="close-cinematic-btn" class="btn-primary">Continuar</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
+
         <!-- Controles táctiles -->
         <div class="touch-controls">
             <div class="dpad">
@@ -208,5 +367,7 @@
             alert('2084 - La Resistencia de las Palabras\n\nInspírado en 1984 de George Orwell\nDesarrollado con IA\n\n"La libertad es poder decir que dos más dos son cuatro."');
         }
     </script>
+    <script src="audio.js"></script>
+    <script src="game.js"></script>
 </body>
 </html>

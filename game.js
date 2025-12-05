@@ -28,6 +28,9 @@ const keys = {
     pause: false
 };
 
+// Cargar sistema de audio
+const audioSystem = new AudioSystem();
+
 // ===========================
 // META DEL JUEGO
 // ===========================
@@ -584,6 +587,30 @@ function initGame() {
         });
     }, 500);
 }
+function initGame() {
+    console.log('🎮 Iniciando juego 2084...');
+    gameRunning = true;
+    
+    // Iniciar música de fondo
+    audioSystem.resume();
+    audioSystem.playBackgroundMusic();
+    
+    setupControls();
+    setupTouchControls();
+    setupUI();
+    setupAudioControls(); // NUEVO
+    gameLoop();
+
+    setTimeout(() => {
+        showCinematic({
+            title: '2084 - Introducción',
+            text: 'En un colegio rural colombiano, el Sistema de Vigilancia Escolar (SVE) controla cada pantalla, cada palabra y cada pensamiento.\n\nPero algunos estudiantes han descubierto que la lectura puede romper el control.\n\n🎯 META: Desbloquea 10 palabras para ganar.',
+            video: 'exterior_school.mp4',
+            autoplay: true,
+            loop: false
+        });
+    }, 500);
+}
 
 // ===========================
 // CONTROLES
@@ -769,6 +796,37 @@ function setupUI() {
 
     updateUI();
 }
+function setupAudioControls() {
+    const toggleBtn = document.getElementById('toggle-audio-btn');
+    const musicVolume = document.getElementById('music-volume');
+    const sfxVolume = document.getElementById('sfx-volume');
+    const musicVolumeValue = document.getElementById('music-volume-value');
+    const sfxVolumeValue = document.getElementById('sfx-volume-value');
+
+    // Toggle mute
+    toggleBtn.addEventListener('click', () => {
+        const isMuted = audioSystem.toggleMute();
+        toggleBtn.textContent = isMuted ? '🔇' : '🔊';
+        audioSystem.playSound('interact');
+    });
+
+    // Control de volumen de música
+    musicVolume.addEventListener('input', (e) => {
+        const volume = e.target.value / 100;
+        audioSystem.setMusicVolume(volume);
+        musicVolumeValue.textContent = e.target.value;
+    });
+
+    // Control de volumen de efectos
+    sfxVolume.addEventListener('input', (e) => {
+        const volume = e.target.value / 100;
+        audioSystem.setSFXVolume(volume);
+        sfxVolumeValue.textContent = e.target.value;
+        audioSystem.playSound('interact');
+    });
+
+    console.log('🎵 Controles de audio configurados');
+}
 
 // ===========================
 // GAME LOOP
@@ -899,9 +957,84 @@ function interactWithZone(zone) {
     
     if (!interaction) {
         showNotification(`Ya has explorado todo en ${zone.name}`);
+        audioSystem.playSound('error'); // SONIDO
         return;
     }
+audioSystem.playSound('interact'); // SONIDO
+    
+    // ... resto del código ...
 
+    if (interaction.reward) {
+        if (interaction.reward.word) {
+            unlockWord(interaction.reward.word);
+            showNotification(`📖 Palabra desbloqueada: ${interaction.reward.word}`);
+            audioSystem.playSound('unlock'); // SONIDO
+        }
+        // ... resto del código ...
+    }
+
+    zone.interactionCount++;
+    updateUI();
+    checkMissionProgress(zone);
+}
+
+function showDialogue(npc) {
+    audioSystem.playSound('dialogue'); // SONIDO
+    // ... resto del código ...
+}
+
+function handleDialogueChoice(npc, choice) {
+    audioSystem.playSound('interact'); // SONIDO
+    
+    if (choice.mission) {
+        const mission = missions[choice.mission];
+        if (mission && !mission.active) {
+            mission.active = true;
+            mission.objectives[0].completed = true;
+            activeMissions.push(mission);
+            showNotification(`✅ Misión aceptada: ${mission.title}`);
+            audioSystem.playSound('mission'); // SONIDO
+        }
+    }
+    // ... resto del código ...
+}
+
+function showNotification(message) {
+    audioSystem.playSound('notification'); // SONIDO
+    // ... resto del código ...
+}
+
+function updateDrones() {
+    drones.forEach(drone => {
+        // ... código existente ...
+
+        if (checkCollision(player, drone)) {
+            player.mentalFreedom = Math.max(0, player.mentalFreedom - 5);
+            showNotification('⚠️ ¡Detectado por un dron! -5 Libertad Mental');
+            audioSystem.playSound('drone'); // SONIDO
+            updateUI();
+            
+            if (drone.axis === 'x') {
+                player.y += drone.direction * 20;
+            } else {
+                player.x += drone.direction * 20;
+            }
+        }
+    });
+}
+
+function checkWinCondition() {
+    if (gameEnded) return;
+
+    if (player.unlockedWords.length >= WORDS_TO_WIN) {
+        gameEnded = true;
+        audioSystem.playSound('victory'); // SONIDO
+        missions.mission3.completed = true;
+        missions.mission3.objectives[0].completed = true;
+        
+        // ... resto del código ...
+    }
+}
     console.log(`🎯 Interacción ${zone.interactionCount + 1}/${zone.interactions.length} en ${zone.name}`);
 
     if (interaction.video) {
