@@ -16,29 +16,36 @@ class AudioSystem {
         this.currentMusic = null;
         this.musicOscillators = [];
         
-        this.init();
+        this.initialized = false;
     }
 
     init() {
-        // Crear contexto de audio
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.initialized) return;
         
-        // Crear nodos de ganancia
-        this.masterGain = this.audioContext.createGain();
-        this.musicGain = this.audioContext.createGain();
-        this.sfxGain = this.audioContext.createGain();
-        
-        // Conectar nodos
-        this.musicGain.connect(this.masterGain);
-        this.sfxGain.connect(this.masterGain);
-        this.masterGain.connect(this.audioContext.destination);
-        
-        // Configurar volúmenes iniciales
-        this.musicGain.gain.value = this.musicVolume;
-        this.sfxGain.gain.value = this.sfxVolume;
-        this.masterGain.gain.value = 1;
-        
-        console.log('🎵 Sistema de audio inicializado');
+        try {
+            // Crear contexto de audio
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Crear nodos de ganancia
+            this.masterGain = this.audioContext.createGain();
+            this.musicGain = this.audioContext.createGain();
+            this.sfxGain = this.audioContext.createGain();
+            
+            // Conectar nodos
+            this.musicGain.connect(this.masterGain);
+            this.sfxGain.connect(this.masterGain);
+            this.masterGain.connect(this.audioContext.destination);
+            
+            // Configurar volúmenes iniciales
+            this.musicGain.gain.value = this.musicVolume;
+            this.sfxGain.gain.value = this.sfxVolume;
+            this.masterGain.gain.value = 1;
+            
+            this.initialized = true;
+            console.log('🎵 Sistema de audio inicializado');
+        } catch (error) {
+            console.error('❌ Error al inicializar audio:', error);
+        }
     }
 
     // ===========================
@@ -46,90 +53,94 @@ class AudioSystem {
     // ===========================
 
     playBackgroundMusic() {
+        if (!this.initialized) this.init();
+        if (!this.audioContext) return;
+        
         this.stopMusic();
         
-        // Crear música ambiente distópica
-        const now = this.audioContext.currentTime;
-        
-        // Bajo profundo (drone)
-        const bass = this.audioContext.createOscillator();
-        bass.type = 'sine';
-        bass.frequency.setValueAtTime(55, now); // A1
-        
-        const bassGain = this.audioContext.createGain();
-        bassGain.gain.setValueAtTime(0.3, now);
-        
-        bass.connect(bassGain);
-        bassGain.connect(this.musicGain);
-        bass.start(now);
-        
-        // Pad atmosférico
-        const pad = this.audioContext.createOscillator();
-        pad.type = 'triangle';
-        pad.frequency.setValueAtTime(220, now); // A3
-        
-        const padGain = this.audioContext.createGain();
-        padGain.gain.setValueAtTime(0, now);
-        padGain.gain.linearRampToValueAtTime(0.15, now + 2);
-        
-        const padFilter = this.audioContext.createBiquadFilter();
-        padFilter.type = 'lowpass';
-        padFilter.frequency.setValueAtTime(800, now);
-        
-        pad.connect(padFilter);
-        padFilter.connect(padGain);
-        padGain.connect(this.musicGain);
-        pad.start(now);
-        
-        // Ruido blanco (ambiente)
-        const bufferSize = 2 * this.audioContext.sampleRate;
-        const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        
-        for (let i = 0; i < bufferSize; i++) {
-            output[i] = Math.random() * 2 - 1;
+        try {
+            const now = this.audioContext.currentTime;
+            
+            // Bajo profundo (drone)
+            const bass = this.audioContext.createOscillator();
+            bass.type = 'sine';
+            bass.frequency.setValueAtTime(55, now);
+            
+            const bassGain = this.audioContext.createGain();
+            bassGain.gain.setValueAtTime(0.3, now);
+            
+            bass.connect(bassGain);
+            bassGain.connect(this.musicGain);
+            bass.start(now);
+            
+            // Pad atmosférico
+            const pad = this.audioContext.createOscillator();
+            pad.type = 'triangle';
+            pad.frequency.setValueAtTime(220, now);
+            
+            const padGain = this.audioContext.createGain();
+            padGain.gain.setValueAtTime(0, now);
+            padGain.gain.linearRampToValueAtTime(0.15, now + 2);
+            
+            const padFilter = this.audioContext.createBiquadFilter();
+            padFilter.type = 'lowpass';
+            padFilter.frequency.setValueAtTime(800, now);
+            
+            pad.connect(padFilter);
+            padFilter.connect(padGain);
+            padGain.connect(this.musicGain);
+            pad.start(now);
+            
+            // Ruido blanco (ambiente)
+            const bufferSize = 2 * this.audioContext.sampleRate;
+            const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+            
+            const whiteNoise = this.audioContext.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+            
+            const noiseFilter = this.audioContext.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(300, now);
+            
+            const noiseGain = this.audioContext.createGain();
+            noiseGain.gain.setValueAtTime(0.05, now);
+            
+            whiteNoise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(this.musicGain);
+            whiteNoise.start(now);
+            
+            // Pulso rítmico
+            const pulse = this.audioContext.createOscillator();
+            pulse.type = 'sine';
+            pulse.frequency.setValueAtTime(110, now);
+            
+            const pulseGain = this.audioContext.createGain();
+            pulseGain.gain.setValueAtTime(0, now);
+            
+            for (let i = 0; i < 100; i++) {
+                const time = now + i * 2;
+                pulseGain.gain.setValueAtTime(0, time);
+                pulseGain.gain.linearRampToValueAtTime(0.2, time + 0.1);
+                pulseGain.gain.linearRampToValueAtTime(0, time + 0.3);
+            }
+            
+            pulse.connect(pulseGain);
+            pulseGain.connect(this.musicGain);
+            pulse.start(now);
+            
+            this.musicOscillators = [bass, pad, whiteNoise, pulse];
+            
+            console.log('🎵 Música de fondo iniciada');
+        } catch (error) {
+            console.error('❌ Error al reproducir música:', error);
         }
-        
-        const whiteNoise = this.audioContext.createBufferSource();
-        whiteNoise.buffer = noiseBuffer;
-        whiteNoise.loop = true;
-        
-        const noiseFilter = this.audioContext.createBiquadFilter();
-        noiseFilter.type = 'lowpass';
-        noiseFilter.frequency.setValueAtTime(300, now);
-        
-        const noiseGain = this.audioContext.createGain();
-        noiseGain.gain.setValueAtTime(0.05, now);
-        
-        whiteNoise.connect(noiseFilter);
-        noiseFilter.connect(noiseGain);
-        noiseGain.connect(this.musicGain);
-        whiteNoise.start(now);
-        
-        // Pulso rítmico (heartbeat)
-        const pulse = this.audioContext.createOscillator();
-        pulse.type = 'sine';
-        pulse.frequency.setValueAtTime(110, now); // A2
-        
-        const pulseGain = this.audioContext.createGain();
-        pulseGain.gain.setValueAtTime(0, now);
-        
-        // Crear patrón de pulso
-        for (let i = 0; i < 100; i++) {
-            const time = now + i * 2;
-            pulseGain.gain.setValueAtTime(0, time);
-            pulseGain.gain.linearRampToValueAtTime(0.2, time + 0.1);
-            pulseGain.gain.linearRampToValueAtTime(0, time + 0.3);
-        }
-        
-        pulse.connect(pulseGain);
-        pulseGain.connect(this.musicGain);
-        pulse.start(now);
-        
-        // Guardar osciladores
-        this.musicOscillators = [bass, pad, whiteNoise, pulse];
-        
-        console.log('🎵 Música de fondo iniciada');
     }
 
     stopMusic() {
@@ -138,7 +149,7 @@ class AudioSystem {
                 try {
                     osc.stop();
                 } catch (e) {
-                    // Ignorar errores si ya está detenido
+                    // Ignorar errores
                 }
             });
             this.musicOscillators = [];
@@ -150,35 +161,42 @@ class AudioSystem {
     // ===========================
 
     playSound(type) {
+        if (!this.initialized) this.init();
+        if (!this.audioContext) return;
+        
         const now = this.audioContext.currentTime;
         
-        switch(type) {
-            case 'interact':
-                this.playSoundInteract(now);
-                break;
-            case 'unlock':
-                this.playSoundUnlock(now);
-                break;
-            case 'drone':
-                this.playSoundDrone(now);
-                break;
-            case 'notification':
-                this.playSoundNotification(now);
-                break;
-            case 'dialogue':
-                this.playSoundDialogue(now);
-                break;
-            case 'mission':
-                this.playSoundMission(now);
-                break;
-            case 'victory':
-                this.playSoundVictory(now);
-                break;
-            case 'error':
-                this.playSoundError(now);
-                break;
-            default:
-                console.warn(`Sonido desconocido: ${type}`);
+        try {
+            switch(type) {
+                case 'interact':
+                    this.playSoundInteract(now);
+                    break;
+                case 'unlock':
+                    this.playSoundUnlock(now);
+                    break;
+                case 'drone':
+                    this.playSoundDrone(now);
+                    break;
+                case 'notification':
+                    this.playSoundNotification(now);
+                    break;
+                case 'dialogue':
+                    this.playSoundDialogue(now);
+                    break;
+                case 'mission':
+                    this.playSoundMission(now);
+                    break;
+                case 'victory':
+                    this.playSoundVictory(now);
+                    break;
+                case 'error':
+                    this.playSoundError(now);
+                    break;
+                default:
+                    console.warn(`Sonido desconocido: ${type}`);
+            }
+        } catch (error) {
+            console.error(`❌ Error al reproducir sonido ${type}:`, error);
         }
     }
 
@@ -199,7 +217,6 @@ class AudioSystem {
     }
 
     playSoundUnlock(now) {
-        // Sonido de desbloqueo (ascendente)
         for (let i = 0; i < 3; i++) {
             const osc = this.audioContext.createOscillator();
             osc.type = 'sine';
@@ -218,7 +235,6 @@ class AudioSystem {
     }
 
     playSoundDrone(now) {
-        // Sonido de alerta de dron
         const osc = this.audioContext.createOscillator();
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(600, now);
@@ -251,7 +267,6 @@ class AudioSystem {
     }
 
     playSoundDialogue(now) {
-        // Sonido de diálogo (blip)
         const osc = this.audioContext.createOscillator();
         osc.type = 'square';
         osc.frequency.setValueAtTime(300, now);
@@ -267,8 +282,7 @@ class AudioSystem {
     }
 
     playSoundMission(now) {
-        // Sonido épico de misión
-        const frequencies = [262, 330, 392, 523]; // C, E, G, C (acorde mayor)
+        const frequencies = [262, 330, 392, 523];
         
         frequencies.forEach((freq, i) => {
             const osc = this.audioContext.createOscillator();
@@ -287,8 +301,7 @@ class AudioSystem {
     }
 
     playSoundVictory(now) {
-        // Sonido de victoria (fanfarria)
-        const melody = [523, 659, 784, 1047]; // C5, E5, G5, C6
+        const melody = [523, 659, 784, 1047];
         
         melody.forEach((freq, i) => {
             const osc = this.audioContext.createOscillator();
@@ -307,7 +320,6 @@ class AudioSystem {
     }
 
     playSoundError(now) {
-        // Sonido de error (descendente)
         const osc = this.audioContext.createOscillator();
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(400, now);
@@ -329,26 +341,32 @@ class AudioSystem {
 
     setMusicVolume(volume) {
         this.musicVolume = volume;
-        this.musicGain.gain.value = volume;
+        if (this.musicGain) {
+            this.musicGain.gain.value = volume;
+        }
     }
 
     setSFXVolume(volume) {
         this.sfxVolume = volume;
-        this.sfxGain.gain.value = volume;
+        if (this.sfxGain) {
+            this.sfxGain.gain.value = volume;
+        }
     }
 
     toggleMute() {
         this.isMuted = !this.isMuted;
-        this.masterGain.gain.value = this.isMuted ? 0 : 1;
+        if (this.masterGain) {
+            this.masterGain.gain.value = this.isMuted ? 0 : 1;
+        }
         return this.isMuted;
     }
 
     resume() {
-        if (this.audioContext.state === 'suspended') {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
     }
 }
 
-// Exportar instancia global
+// Crear instancia global
 const audioSystem = new AudioSystem();
