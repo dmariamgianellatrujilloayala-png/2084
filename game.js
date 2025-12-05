@@ -583,11 +583,11 @@ function unlockWord(word) {
 
 // ========== ACTUALIZAR HUD ==========
 function updateHUD() {
-    // Libertad Mental
+    // Libertad Mental (SOLO 2 DECIMALES)
     const mentalBar = document.getElementById('mental-freedom-bar');
     const mentalText = document.getElementById('mental-freedom-text');
     if (mentalBar) mentalBar.style.width = player.mentalFreedom + '%';
-    if (mentalText) mentalText.textContent = player.mentalFreedom + '%';
+    if (mentalText) mentalText.textContent = player.mentalFreedom.toFixed(2) + '%'; // ✅ CORREGIDO
     
     // Palabras
     const wordsList = document.getElementById('words-list');
