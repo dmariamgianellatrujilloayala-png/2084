@@ -31,7 +31,7 @@ let ambientStarted = false;
 
 // ========== AVATAR DEL JUGADOR ==========
 const playerSprite = new Image();
-playerSprite.src = 'images/winston_student.jpg'; // Cambia si quieres otro avatar
+playerSprite.src = 'images/winston_student.jpg';
 
 // ========== JUGADOR ==========
 const player = {
@@ -84,9 +84,9 @@ const zones = [
     { name: 'Salón de Clases', x: 100, y: 100, width: 200, height: 150, color: 'rgba(100, 100, 255, 0.3)', interactive: true, description: 'Los estudiantes miran sus pantallas en silencio...' },
     { name: 'Sala de Computadoras', x: 400, y: 100, width: 200, height: 150, color: 'rgba(255, 100, 100, 0.3)', interactive: true, description: 'El SVE monitorea cada tecla presionada.' },
     { name: 'Biblioteca Antigua', x: 700, y: 100, width: 200, height: 150, color: 'rgba(100, 255, 100, 0.3)', interactive: true, description: 'Libros cubiertos de polvo... ¿Prohibidos?', challenge: 'challenge_1' },
-    { name: 'Baño (Resistencia)', x: 100, y: 350, width: 150, height: 120, color: 'rgba(255, 255, 100, 0.3)', interactive: true, description: 'Grafitis secretos en las paredes...' },
+    { name: 'Baño (Resistencia)', x: 100, y: 350, width: 150, height: 120, color: 'rgba(255, 255, 100, 0.3)', interactive: true, description: 'Grafitis secretos en las paredes...', challenge: 'challenge_2' },
     { name: 'Sala de Control', x: 400, y: 350, width: 200, height: 150, color: 'rgba(255, 50, 50, 0.3)', interactive: true, description: '⚠️ ZONA RESTRINGIDA - SVE' },
-    { name: 'Patio', x: 700, y: 350, width: 200, height: 150, color: 'rgba(100, 255, 255, 0.3)', interactive: true, description: 'Estudiantes con teléfonos, sin hablar entre ellos.' }
+    { name: 'Patio', x: 700, y: 350, width: 200, height: 150, color: 'rgba(100, 255, 255, 0.3)', interactive: true, description: 'Estudiantes con teléfonos, sin hablar entre ellos.', challenge: 'challenge_3' }
 ];
 
 // ========== NPCs ==========
@@ -229,11 +229,6 @@ const readingChallenges = {
     }
 };
 
-// Asignar desafíos a zonas
-zones[2].challenge = 'challenge_1'; // Biblioteca
-zones[3].challenge = 'challenge_2'; // Baño
-zones[5].challenge = 'challenge_3'; // Patio
-
 // ========== TUTORIAL ==========
 const tutorialSteps = [
     {
@@ -261,13 +256,11 @@ function nextTutorialStep() {
     currentTutorialStep++;
     
     if (currentTutorialStep >= tutorialSteps.length) {
-        // Terminar tutorial
         document.getElementById('tutorial-overlay').classList.remove('active');
         gameState.inTutorial = false;
-        gameState.currentWaypoint = { x: 500, y: 200 }; // Apuntar a Julia
+        gameState.currentWaypoint = { x: 500, y: 200 };
         showNotification('Misión Actual', 'Busca a otros estudiantes que piensen diferente. Habla con Julia.');
     } else {
-        // Mostrar siguiente paso
         document.getElementById('tutorial-text').textContent = tutorialSteps[currentTutorialStep].text;
     }
 }
@@ -288,7 +281,6 @@ function startTutorial() {
     document.getElementById('tutorial-text').textContent = tutorialSteps[0].text;
 }
 
-// Auto-skip cinemática después de 16 segundos
 setTimeout(() => {
     skipCinematic();
 }, 16000);
@@ -310,7 +302,6 @@ function showReadingChallenge(challengeId) {
     const fragmentsContainer = document.getElementById('challenge-fragments');
     fragmentsContainer.innerHTML = '';
     
-    // Mezclar fragmentos
     const shuffled = [...challenge.fragments].sort(() => Math.random() - 0.5);
     currentFragmentOrder = [];
     
@@ -322,7 +313,6 @@ function showReadingChallenge(challengeId) {
         div.dataset.originalIndex = challenge.fragments.indexOf(fragment);
         div.dataset.currentIndex = index;
         
-        // Drag events
         div.addEventListener('dragstart', (e) => {
             draggedElement = div;
             div.classList.add('dragging');
@@ -339,7 +329,6 @@ function showReadingChallenge(challengeId) {
         div.addEventListener('drop', (e) => {
             e.preventDefault();
             if (draggedElement !== div) {
-                // Intercambiar posiciones
                 const allFragments = [...fragmentsContainer.children];
                 const draggedIndex = allFragments.indexOf(draggedElement);
                 const targetIndex = allFragments.indexOf(div);
@@ -366,10 +355,7 @@ function checkReadingAnswer() {
     const fragmentsContainer = document.getElementById('challenge-fragments');
     const fragments = [...fragmentsContainer.children];
     
-    // Obtener orden actual
     const currentOrder = fragments.map(f => parseInt(f.dataset.originalIndex));
-    
-    // Verificar si es correcto
     const isCorrect = JSON.stringify(currentOrder) === JSON.stringify(challenge.correctOrder);
     
     const feedback = document.getElementById('challenge-feedback');
@@ -379,10 +365,8 @@ function checkReadingAnswer() {
         feedback.textContent = challenge.reward.message;
         feedback.style.display = 'block';
         
-        // Marcar fragmentos como correctos
         fragments.forEach(f => f.classList.add('correct'));
         
-        // Otorgar recompensa
         setTimeout(() => {
             unlockWord(challenge.reward.word);
             player.mentalFreedom = Math.min(100, player.mentalFreedom + challenge.reward.mentalFreedom);
@@ -396,7 +380,6 @@ function checkReadingAnswer() {
         feedback.textContent = '❌ Orden incorrecto. Intenta de nuevo.';
         feedback.style.display = 'block';
         
-        // Marcar fragmentos como incorrectos temporalmente
         fragments.forEach(f => f.classList.add('incorrect'));
         setTimeout(() => {
             fragments.forEach(f => f.classList.remove('incorrect'));
@@ -426,17 +409,12 @@ function showDialogue(npc) {
     const dialogueOptions = document.getElementById('dialogue-options');
     const dialogueImage = document.getElementById('dialogue-image');
     
-    // Mostrar imagen del personaje
     if (dialogueImage && npc.image) {
         dialogueImage.src = npc.image;
         dialogueImage.style.display = 'block';
         dialogueImage.onerror = function() {
             console.log('⚠️ Error cargando imagen:', npc.image);
-            console.log('Verifica que el archivo existe en la carpeta images/');
             this.style.display = 'none';
-        };
-        dialogueImage.onload = function() {
-            console.log('✅ Imagen cargada correctamente:', npc.image);
         };
     } else {
         if (dialogueImage) dialogueImage.style.display = 'none';
@@ -445,7 +423,6 @@ function showDialogue(npc) {
     dialogueName.textContent = npc.name;
     dialogueBox.classList.add('active');
     
-    // Efecto de escritura
     let charIndex = 0;
     dialogueText.textContent = '';
     const typingInterval = setInterval(() => {
@@ -457,10 +434,8 @@ function showDialogue(npc) {
         }
     }, 30);
     
-    // Limpiar opciones anteriores
     dialogueOptions.innerHTML = '';
     
-    // Crear botones de opciones
     if (dialogue.options) {
         dialogue.options.forEach((option, index) => {
             const button = document.createElement('button');
@@ -483,7 +458,6 @@ function showDialogue(npc) {
 function handleDialogueChoice(npc, option) {
     playSound('interact');
     
-    // Ejecutar acción
     if (option.action === 'unlock_word' && option.word) {
         unlockWord(option.word);
         if (option.mentalFreedom) {
@@ -493,7 +467,6 @@ function handleDialogueChoice(npc, option) {
         player.mentalFreedom = Math.max(0, player.mentalFreedom + option.mentalFreedom);
     }
     
-    // Avanzar diálogo
     if (option.action === 'progress' || option.action === 'unlock_word') {
         npc.dialogueIndex++;
         if (npc.dialogueIndex < npc.dialogue.length) {
@@ -519,10 +492,14 @@ function closeDialogue(npc) {
 
 // ========== INTERACCIONES ==========
 function checkInteractions() {
+    console.log('🔍 Verificando interacciones...');
+    console.log('Palabras desbloqueadas:', player.unlockedWords);
+    
     // Prioridad 1: NPCs
     for (let npc of npcs) {
         const distance = Math.sqrt(Math.pow(player.x - npc.x, 2) + Math.pow(player.y - npc.y, 2));
         if (distance < 60) {
+            console.log('💬 Interactuando con NPC:', npc.name);
             showDialogue(npc);
             return;
         }
@@ -531,22 +508,33 @@ function checkInteractions() {
     // Prioridad 2: Zonas con desafíos
     for (let zone of zones) {
         if (zone.interactive && isPlayerInZone(zone)) {
+            console.log('📍 En zona:', zone.name);
+            
             if (zone.challenge && readingChallenges[zone.challenge]) {
-                // Verificar si ya completó el desafío
                 const challenge = readingChallenges[zone.challenge];
+                console.log('📖 Desafío disponible:', challenge.id);
+                console.log('Palabra del desafío:', challenge.reward.word);
+                console.log('¿Ya desbloqueada?', player.unlockedWords.includes(challenge.reward.word));
+                
+                // ✅ CORRECCIÓN: Verificar correctamente si ya completó el desafío
                 if (!player.unlockedWords.includes(challenge.reward.word)) {
+                    console.log('✅ Mostrando desafío');
                     showReadingChallenge(zone.challenge);
                     return;
                 } else {
+                    console.log('⚠️ Desafío ya completado');
                     showNotification(zone.name, 'Ya completaste el desafío de esta zona.');
                     return;
                 }
             } else {
+                console.log('ℹ️ Zona sin desafío');
                 showNotification(zone.name, zone.description);
                 return;
             }
         }
     }
+    
+    console.log('❌ No hay interacciones disponibles');
 }
 
 function isPlayerInZone(zone) {
@@ -576,20 +564,21 @@ function showNotification(title, message) {
 function unlockWord(word) {
     if (!player.unlockedWords.includes(word)) {
         player.unlockedWords.push(word);
+        console.log('🔓 Palabra desbloqueada:', word);
+        console.log('Total palabras:', player.unlockedWords);
         updateHUD();
+        saveProgress(); // ✅ Guardar inmediatamente
         showNotification('¡Palabra Desbloqueada!', `"${word}" ha sido añadida a tu vocabulario.`);
     }
 }
 
 // ========== ACTUALIZAR HUD ==========
 function updateHUD() {
-    // Libertad Mental (SOLO 2 DECIMALES)
     const mentalBar = document.getElementById('mental-freedom-bar');
     const mentalText = document.getElementById('mental-freedom-text');
     if (mentalBar) mentalBar.style.width = player.mentalFreedom + '%';
-    if (mentalText) mentalText.textContent = player.mentalFreedom.toFixed(2) + '%'; // ✅ CORREGIDO
+    if (mentalText) mentalText.textContent = player.mentalFreedom.toFixed(2) + '%';
     
-    // Palabras
     const wordsList = document.getElementById('words-list');
     if (wordsList) {
         wordsList.innerHTML = '';
@@ -601,7 +590,6 @@ function updateHUD() {
         });
     }
     
-    // Misión
     const missionElement = document.getElementById('current-mission');
     if (missionElement) missionElement.textContent = player.currentMission;
 }
@@ -630,7 +618,6 @@ function updateWaypoint() {
     const distanceElement = document.getElementById('waypoint-distance');
     if (distanceElement) distanceElement.textContent = Math.floor(distance) + 'm';
     
-    // Rotar flecha (simplificado - siempre apunta a la derecha si el objetivo está a la derecha)
     const arrow = document.querySelector('.waypoint-arrow');
     if (arrow) {
         if (dx > 0) {
@@ -646,7 +633,6 @@ function playSound(soundName) {
     if (sounds[soundName]) {
         sounds[soundName].currentTime = 0;
         sounds[soundName].play().catch(e => {
-            // Silenciar errores de audio si no hay archivos
             if (e.name !== 'NotSupportedError') {
                 console.log('Audio no disponible:', soundName);
             }
@@ -677,11 +663,9 @@ function updatePlayer() {
         moving = true;
     }
     
-    // Límites del canvas
     player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
     player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
     
-    // Sonido de pasos (ocasional)
     if (moving && Math.random() < 0.02) {
         playSound('footstep');
     }
@@ -702,7 +686,6 @@ function updateDrones() {
             }
         }
         
-        // Detectar colisión con jugador
         const distance = Math.sqrt(Math.pow(player.x - drone.x, 2) + Math.pow(player.y - drone.y, 2));
         if (distance < 40) {
             player.mentalFreedom = Math.max(0, player.mentalFreedom - 0.1);
@@ -713,11 +696,9 @@ function updateDrones() {
 
 // ========== DIBUJAR ==========
 function draw() {
-    // Limpiar canvas
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Dibujar zonas
     zones.forEach(zone => {
         ctx.fillStyle = zone.color;
         ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
@@ -725,23 +706,19 @@ function draw() {
         ctx.lineWidth = 2;
         ctx.strokeRect(zone.x, zone.y, zone.width, zone.height);
         
-        // Nombre de zona
         ctx.fillStyle = '#00ff88';
         ctx.font = '14px Orbitron';
         ctx.fillText(zone.name, zone.x + 10, zone.y + 25);
     });
     
-    // Dibujar NPCs
     npcs.forEach(npc => {
         ctx.fillStyle = npc.color;
         ctx.fillRect(npc.x, npc.y, npc.width, npc.height);
         
-        // Nombre
         ctx.fillStyle = '#fff';
         ctx.font = '12px Orbitron';
         ctx.fillText(npc.name, npc.x - 10, npc.y - 10);
         
-        // Indicador de interacción
         const distance = Math.sqrt(Math.pow(player.x - npc.x, 2) + Math.pow(player.y - npc.y, 2));
         if (distance < 60) {
             ctx.fillStyle = '#00ff88';
@@ -750,34 +727,23 @@ function draw() {
         }
     });
     
-    // Dibujar drones
     drones.forEach(drone => {
         ctx.fillStyle = drone.color;
         ctx.fillRect(drone.x, drone.y, drone.width, drone.height);
         
-        // Ojo del drone
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(drone.x + 12, drone.y + 12, 5, 0, Math.PI * 2);
         ctx.fill();
     });
     
-    // Dibujar jugador (AVATAR CON IMAGEN)
     if (playerSprite.complete && playerSprite.naturalWidth > 0) {
-        ctx.drawImage(
-            playerSprite,
-            player.x,
-            player.y,
-            player.width,
-            player.height
-        );
+        ctx.drawImage(playerSprite, player.x, player.y, player.width, player.height);
     } else {
-        // Mientras carga la imagen, dibujar el cubo
         ctx.fillStyle = player.color;
         ctx.fillRect(player.x, player.y, player.width, player.height);
     }
     
-    // Indicador de interacción en zonas
     zones.forEach(zone => {
         if (zone.interactive && isPlayerInZone(zone)) {
             ctx.fillStyle = '#00ff88';
@@ -786,7 +752,6 @@ function draw() {
         }
     });
     
-    // Dibujar minimapa
     drawMinimap();
 }
 
@@ -798,25 +763,48 @@ function drawMinimap() {
     const mCtx = minimapCanvas.getContext('2d');
     const scale = 0.15;
     
-    // Limpiar
     mCtx.fillStyle = '#000';
     mCtx.fillRect(0, 0, 150, 150);
     
-    // Zonas
     zones.forEach(zone => {
         mCtx.fillStyle = zone.color;
         mCtx.fillRect(zone.x * scale, zone.y * scale, zone.width * scale, zone.height * scale);
     });
     
-    // NPCs
     npcs.forEach(npc => {
         mCtx.fillStyle = npc.color;
         mCtx.fillRect(npc.x * scale, npc.y * scale, 5, 5);
     });
     
-    // Jugador
     mCtx.fillStyle = '#00ff88';
     mCtx.fillRect(player.x * scale, player.y * scale, 5, 5);
+}
+
+// ========== GUARDAR/CARGAR PROGRESO ==========
+function saveProgress() {
+    const saveData = {
+        mentalFreedom: player.mentalFreedom,
+        unlockedWords: player.unlockedWords,
+        x: player.x,
+        y: player.y
+    };
+    localStorage.setItem('player2084', JSON.stringify(saveData));
+    console.log('💾 Progreso guardado:', saveData);
+}
+
+function loadProgress() {
+    const savedData = localStorage.getItem('player2084');
+    if (savedData) {
+        const loaded = JSON.parse(savedData);
+        player.mentalFreedom = loaded.mentalFreedom || 50;
+        player.unlockedWords = loaded.unlockedWords || [];
+        player.x = loaded.x || 400;
+        player.y = loaded.y || 300;
+        updateHUD();
+        console.log('📂 Progreso cargado:', loaded);
+    } else {
+        console.log('ℹ️ No hay progreso guardado');
+    }
 }
 
 // ========== GAME LOOP ==========
@@ -832,35 +820,37 @@ function gameLoop() {
 const restartBtn = document.getElementById('restart-button');
 if (restartBtn) {
     restartBtn.addEventListener('click', () => {
-        // Confirmación antes de reiniciar
         if (!confirm('¿Estás seguro de que quieres reiniciar el juego? Se perderá todo el progreso.')) {
             return;
         }
         
-        // 1. Reset completo del jugador
+        console.log('🔄 Iniciando reinicio completo...');
+        
+        // 1. Reset jugador
         player.x = 400;
         player.y = 300;
         player.mentalFreedom = 50;
-        player.unlockedWords = []; // Vaciar palabras - ESTO PERMITE REPETIR DESAFÍOS
+        player.unlockedWords = [];
         player.currentMission = 'Explora la escuela y habla con otros estudiantes';
         
-        // 2. Reset de diálogos NPC
+        // 2. Reset NPCs
         npcs.forEach(npc => {
             npc.met = false;
             npc.dialogueIndex = 0;
         });
         
-        // 3. Reset de estado del juego
+        // 3. Reset estado
         gameState.inDialogue = false;
         gameState.inTutorial = false;
         gameState.inChallenge = false;
         gameState.currentChallenge = null;
-        gameState.currentWaypoint = { x: 500, y: 200 }; // Apuntar a Julia
+        gameState.currentWaypoint = { x: 500, y: 200 };
         
-        // 4. IMPORTANTE: Limpiar localStorage (progreso guardado)
+        // 4. ✅ LIMPIAR LOCALSTORAGE
         localStorage.removeItem('player2084');
+        console.log('🗑️ localStorage limpiado');
         
-        // 5. Cerrar cualquier overlay abierto
+        // 5. Cerrar overlays
         const dialogueBox = document.getElementById('dialogue-box');
         const readingChallenge = document.getElementById('reading-challenge');
         const tutorialOverlay = document.getElementById('tutorial-overlay');
@@ -875,27 +865,17 @@ if (restartBtn) {
         // 7. Notificación
         showNotification('🔄 Juego reiniciado', 'Todos los desafíos están disponibles de nuevo. ¡Buena suerte!');
         
-        console.log('✅ Juego reiniciado completamente');
+        console.log('✅ Reinicio completado');
         console.log('Palabras desbloqueadas:', player.unlockedWords);
-        console.log('localStorage limpiado');
     });
 }
 
 // ========== INICIAR JUEGO ==========
+loadProgress(); // ✅ Cargar progreso al inicio
 updateHUD();
 gameLoop();
 
 // Guardar progreso cada 30 segundos
 setInterval(() => {
-    localStorage.setItem('player2084', JSON.stringify(player));
+    saveProgress();
 }, 30000);
-
-// Cargar progreso guardado
-const savedPlayer = localStorage.getItem('player2084');
-if (savedPlayer) {
-    const loaded = JSON.parse(savedPlayer);
-    player.mentalFreedom = loaded.mentalFreedom || 50;
-    player.unlockedWords = loaded.unlockedWords || [];
-    updateHUD();
-    console.log('📂 Progreso cargado desde localStorage');
-}
