@@ -389,7 +389,6 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: none;
 }
 
 .dialogue-text-container {
@@ -463,6 +462,7 @@ body {
     background: rgba(255, 0, 0, 0.4);
     box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
 }
+
 /* ========== HUD ========== */
 .hud {
     position: fixed;
