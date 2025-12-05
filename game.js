@@ -586,27 +586,33 @@ function updateHUD() {
     // Libertad Mental
     const mentalBar = document.getElementById('mental-freedom-bar');
     const mentalText = document.getElementById('mental-freedom-text');
-    mentalBar.style.width = player.mentalFreedom + '%';
-    mentalText.textContent = player.mentalFreedom + '%';
+    if (mentalBar) mentalBar.style.width = player.mentalFreedom + '%';
+    if (mentalText) mentalText.textContent = player.mentalFreedom + '%';
     
     // Palabras
     const wordsList = document.getElementById('words-list');
-    wordsList.innerHTML = '';
-    player.unlockedWords.forEach(word => {
-        const badge = document.createElement('span');
-        badge.className = 'word-badge';
-        badge.textContent = word;
-        wordsList.appendChild(badge);
-    });
+    if (wordsList) {
+        wordsList.innerHTML = '';
+        player.unlockedWords.forEach(word => {
+            const badge = document.createElement('span');
+            badge.className = 'word-badge';
+            badge.textContent = word;
+            wordsList.appendChild(badge);
+        });
+    }
     
     // Misión
-    document.getElementById('current-mission').textContent = player.currentMission;
+    const missionElement = document.getElementById('current-mission');
+    if (missionElement) missionElement.textContent = player.currentMission;
 }
 
 // ========== WAYPOINT ==========
 function updateWaypoint() {
+    const waypointIndicator = document.getElementById('waypoint-indicator');
+    if (!waypointIndicator) return;
+    
     if (!gameState.currentWaypoint) {
-        document.getElementById('waypoint-indicator').classList.remove('active');
+        waypointIndicator.classList.remove('active');
         return;
     }
     
@@ -616,12 +622,13 @@ function updateWaypoint() {
     
     if (distance < 50) {
         gameState.currentWaypoint = null;
-        document.getElementById('waypoint-indicator').classList.remove('active');
+        waypointIndicator.classList.remove('active');
         return;
     }
     
-    document.getElementById('waypoint-indicator').classList.add('active');
-    document.getElementById('waypoint-distance').textContent = Math.floor(distance) + 'm';
+    waypointIndicator.classList.add('active');
+    const distanceElement = document.getElementById('waypoint-distance');
+    if (distanceElement) distanceElement.textContent = Math.floor(distance) + 'm';
     
     // Rotar flecha (simplificado - siempre apunta a la derecha si el objetivo está a la derecha)
     const arrow = document.querySelector('.waypoint-arrow');
@@ -820,29 +827,57 @@ function gameLoop() {
     draw();
     requestAnimationFrame(gameLoop);
 }
-// ========== REINICIAR JUEGO ==========
+
+// ========== REINICIAR JUEGO (MEJORADO) ==========
 const restartBtn = document.getElementById('restart-button');
 if (restartBtn) {
     restartBtn.addEventListener('click', () => {
-        // Reset de estado del jugador
+        // Confirmación antes de reiniciar
+        if (!confirm('¿Estás seguro de que quieres reiniciar el juego? Se perderá todo el progreso.')) {
+            return;
+        }
+        
+        // 1. Reset completo del jugador
         player.x = 400;
         player.y = 300;
         player.mentalFreedom = 50;
-        player.unlockedWords = [];
+        player.unlockedWords = []; // Vaciar palabras - ESTO PERMITE REPETIR DESAFÍOS
         player.currentMission = 'Explora la escuela y habla con otros estudiantes';
         
-        // Reset de diálogos NPC
+        // 2. Reset de diálogos NPC
         npcs.forEach(npc => {
             npc.met = false;
             npc.dialogueIndex = 0;
         });
         
-        // Quitar waypoints
-        gameState.currentWaypoint = { x: 500, y: 200 }; // de nuevo hacia Julia
+        // 3. Reset de estado del juego
+        gameState.inDialogue = false;
+        gameState.inTutorial = false;
+        gameState.inChallenge = false;
+        gameState.currentChallenge = null;
+        gameState.currentWaypoint = { x: 500, y: 200 }; // Apuntar a Julia
         
-        // Actualizar HUD
+        // 4. IMPORTANTE: Limpiar localStorage (progreso guardado)
+        localStorage.removeItem('player2084');
+        
+        // 5. Cerrar cualquier overlay abierto
+        const dialogueBox = document.getElementById('dialogue-box');
+        const readingChallenge = document.getElementById('reading-challenge');
+        const tutorialOverlay = document.getElementById('tutorial-overlay');
+        
+        if (dialogueBox) dialogueBox.classList.remove('active');
+        if (readingChallenge) readingChallenge.classList.remove('active');
+        if (tutorialOverlay) tutorialOverlay.classList.remove('active');
+        
+        // 6. Actualizar HUD
         updateHUD();
-        showNotification('Juego reiniciado', 'Tu progreso se ha reiniciado. Vuelve a empezar la misión.');
+        
+        // 7. Notificación
+        showNotification('🔄 Juego reiniciado', 'Todos los desafíos están disponibles de nuevo. ¡Buena suerte!');
+        
+        console.log('✅ Juego reiniciado completamente');
+        console.log('Palabras desbloqueadas:', player.unlockedWords);
+        console.log('localStorage limpiado');
     });
 }
 
@@ -862,4 +897,5 @@ if (savedPlayer) {
     player.mentalFreedom = loaded.mentalFreedom || 50;
     player.unlockedWords = loaded.unlockedWords || [];
     updateHUD();
+    console.log('📂 Progreso cargado desde localStorage');
 }
